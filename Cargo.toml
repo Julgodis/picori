@@ -1,0 +1,15 @@
+[package]
+name = "picori"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+readme = "README.md"
+authors = ["Julgodis <self@julgodis.xyz>"]
+description = "Library for decompliation of GameCube/Wii games"
+keywords = ["decompilation", "dol", "rel", "gcm", "rarc"]
+categories = ["encoding", "compression", "parsing"]
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
