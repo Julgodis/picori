@@ -23,7 +23,7 @@
         <div>
             <p class="heading">Functions</p>
             <p class="title has-text-danger">
-                <abbr title="0 / 4">0.0 %</abbr></p>
+                <abbr title="0 / 2">0.0 %</abbr></p>
         </div>
     </div>
 
@@ -83,7 +83,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">use crate::{PicoriError, helper::read_extension::ReadExtension};</pre>
+                <pre class="has-background-white py-0 px-2">use crate::helper::read_extension::ReadExtension;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -99,7 +99,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2"></pre>
+                <pre class="has-background-white py-0 px-2">use crate::PicoriError;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -115,7 +115,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">pub struct Rel {}</pre>
+                <pre class="has-background-white py-0 px-2"></pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -131,7 +131,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2"></pre>
+                <pre class="has-background-white py-0 px-2">pub struct Rel {}</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -147,7 +147,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">impl Rel {</pre>
+                <pre class="has-background-white py-0 px-2"></pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -157,13 +157,13 @@
                 <a href="#8">8</a>
             </div>
             <div
-                class="column is-1 is-narrow p-0 has-text-centered has-text-danger-light has-background-danger"
-                role="cell" aria-label="0">
+                class="column is-1 is-narrow p-0 has-text-centered has-text-white has-background-white"
+                role="cell" aria-label="no coverage">
                 
             </div>
-            <div class="column has-background-danger-light p-0"
+            <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">    pub fn from_bytes&lt;Reader&gt;(_reader: &amp;mut Reader) -&gt; Result&lt;Self, PicoriError&gt;</pre>
+                <pre class="has-background-white py-0 px-2">impl Rel {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -179,7 +179,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">    where</pre>
+                <pre class="has-background-danger-light py-0 px-2">    pub fn from_bytes&lt;Reader&gt;(_reader: &amp;mut Reader) -&gt; Result&lt;Self, PicoriError&gt;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -195,7 +195,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        Reader: Read + Seek,</pre>
+                <pre class="has-background-danger-light py-0 px-2">    where</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -211,7 +211,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">    {</pre>
+                <pre class="has-background-danger-light py-0 px-2">        Reader: Read + Seek,</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -227,7 +227,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let module = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">    {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -243,7 +243,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let _next = reader.read_bu32()?; &#x2F;&#x2F; should be 0, used at runtime</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let module = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -259,7 +259,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let _prev = reader.read_bu32()?; &#x2F;&#x2F; should be 0, used at runtime</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let _next = reader.read_bu32()?; &#x2F;&#x2F; should be 0, used at runtime</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -275,7 +275,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let section_count = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let _prev = reader.read_bu32()?; &#x2F;&#x2F; should be 0, used at runtime</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -291,7 +291,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let section_offset = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let section_count = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -307,7 +307,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let name_offset = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let section_offset = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -323,7 +323,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let name_size = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let name_offset = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -339,7 +339,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let version = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let name_size = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -355,7 +355,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let bss_size = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let version = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -371,7 +371,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let relocation_offset = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let bss_size = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -387,7 +387,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let import_offset = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let relocation_offset = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -403,7 +403,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let import_size = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let import_offset = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -419,7 +419,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let prolog_section = reader.read_bu8()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let import_size = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -435,7 +435,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let epilog_section = reader.read_bu8()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let prolog_section = reader.read_bu8()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -451,7 +451,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let unresolved_section = reader.read_bu8()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let epilog_section = reader.read_bu8()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -467,7 +467,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let _bss_section = reader.read_bu8()?; &#x2F;&#x2F; should be 0, used at runtime</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let unresolved_section = reader.read_bu8()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -483,7 +483,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let prolog_offset = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let _bss_section = reader.read_bu8()?; &#x2F;&#x2F; should be 0, used at runtime</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -499,7 +499,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let epilog_offset = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let prolog_offset = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -515,7 +515,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let unresolved_offset = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let epilog_offset = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -531,7 +531,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let unresolved_offset = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -547,7 +547,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; &#x2F;&#x2F; version 2</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -563,7 +563,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let (align, bss_align) = if version &gt;= 2 {</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; &#x2F;&#x2F; version 2</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -579,7 +579,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     let align = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let (align, bss_align) = if version &gt;= 2 {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -595,7 +595,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     let bss_align = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     let align = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -611,7 +611,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     (align, bss_align)</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     let bss_align = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -627,7 +627,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; } else {</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     (align, bss_align)</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -643,7 +643,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     (1, 1)</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; } else {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -659,7 +659,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; };</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     (1, 1)</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -675,7 +675,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; };</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -691,7 +691,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; &#x2F;&#x2F; version 3</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -707,7 +707,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let fix_size = if version &gt;= 3 {</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; &#x2F;&#x2F; version 3</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -723,7 +723,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     let fix_size = reader.read_bu32()?;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; let fix_size = if version &gt;= 3 {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -739,7 +739,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     fix_size</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     let fix_size = reader.read_bu32()?;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -755,7 +755,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; } else {</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     fix_size</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -771,7 +771,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     0</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; } else {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -787,7 +787,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; };</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;     0</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -803,7 +803,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; };</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -819,7 +819,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; ensure!(version &lt;= 3, UnsupportedVersion(version as usize));</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -835,7 +835,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; ensure!(section_count != 0, InvalidData(&quot;expected sections (got 0)&quot;));</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; ensure!(version &lt;= 3, UnsupportedVersion(version as usize));</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -851,7 +851,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; ensure!(section_offset != 0, InvalidData(&quot;expected section offset (got 0)&quot;));</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; ensure!(section_count != 0, InvalidData(&quot;expected sections (got 0)&quot;));</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -867,7 +867,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; ensure!(name_offset != 0, InvalidData(&quot;expected name offset (got 0)&quot;));</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; ensure!(section_offset != 0, InvalidData(&quot;expected section offset (got 0)&quot;));</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -883,7 +883,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; ensure!(name_size != 0, InvalidData(&quot;expected name size (got 0)&quot;));</pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; ensure!(name_offset != 0, InvalidData(&quot;expected name offset (got 0)&quot;));</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -899,7 +899,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2"></pre>
+                <pre class="has-background-danger-light py-0 px-2">        &#x2F;&#x2F; ensure!(name_size != 0, InvalidData(&quot;expected name size (got 0)&quot;));</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -915,7 +915,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        Ok(Rel {})</pre>
+                <pre class="has-background-danger-light py-0 px-2"></pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -931,7 +931,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">    }</pre>
+                <pre class="has-background-danger-light py-0 px-2">        Ok(Rel {})</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -941,13 +941,13 @@
                 <a href="#57">57</a>
             </div>
             <div
-                class="column is-1 is-narrow p-0 has-text-centered has-text-white has-background-white"
-                role="cell" aria-label="no coverage">
+                class="column is-1 is-narrow p-0 has-text-centered has-text-danger-light has-background-danger"
+                role="cell" aria-label="0">
                 
             </div>
-            <div class="column has-background-white p-0"
+            <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">}</pre>
+                <pre class="has-background-danger-light py-0 px-2">    }</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -963,7 +963,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2"></pre>
+                <pre class="has-background-white py-0 px-2">}</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -973,13 +973,13 @@
                 <a href="#59">59</a>
             </div>
             <div
-                class="column is-1 is-narrow p-0 has-text-centered has-text-danger-light has-background-danger"
-                role="cell" aria-label="0">
+                class="column is-1 is-narrow p-0 has-text-centered has-text-white has-background-white"
+                role="cell" aria-label="no coverage">
                 
             </div>
-            <div class="column has-background-danger-light p-0"
+            <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">pub fn from_bytes&lt;Reader&gt;(reader: &amp;mut Reader) -&gt; Result&lt;Rel, PicoriError&gt;</pre>
+                <pre class="has-background-white py-0 px-2"></pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -995,7 +995,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">where</pre>
+                <pre class="has-background-danger-light py-0 px-2">pub fn from_bytes&lt;Reader&gt;(reader: &amp;mut Reader) -&gt; Result&lt;Rel, PicoriError&gt;</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1011,7 +1011,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">    Reader: ReadExtension + Seek,</pre>
+                <pre class="has-background-danger-light py-0 px-2">where</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1027,7 +1027,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">{</pre>
+                <pre class="has-background-danger-light py-0 px-2">    Reader: ReadExtension + Seek,</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1043,7 +1043,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">    Rel::from_bytes(reader)</pre>
+                <pre class="has-background-danger-light py-0 px-2">{</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1059,13 +1059,29 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
+                <pre class="has-background-danger-light py-0 px-2">    Rel::from_bytes(reader)</pre>
+            </div>
+        </div><div class="columns p-0 m-0" role="row">
+            <div
+                class="column is-1 is-narrow p-0 has-text-centered"
+                id="65"
+                role="cell">
+                <a href="#65">65</a>
+            </div>
+            <div
+                class="column is-1 is-narrow p-0 has-text-centered has-text-danger-light has-background-danger"
+                role="cell" aria-label="0">
+                
+            </div>
+            <div class="column has-background-danger-light p-0"
+                 role="cell">
                 <pre class="has-background-danger-light py-0 px-2">}</pre>
             </div>
         </div></div>
 </div>
         <footer class="footer">
             <div class="content has-text-centered">
-                <p class="heading">Date: 2022-10-29 01:46</p>
+                <p class="heading">Date: 2022-10-29 02:27</p>
             </div>
         </footer>
     </body>
