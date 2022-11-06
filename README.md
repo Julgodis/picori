@@ -10,7 +10,7 @@
 [![crates.io](https://img.shields.io/crates/v/test1)](https://crates.io/crates/test1)
 [![docs.rs](https://docs.rs/test1/badge.svg)](https://docs.rs/druid/)
 [![license](https://img.shields.io/crates/l/druid)](https://github.com/linebender/druid/blob/master/LICENSE)
-[![coverage](https://julgodis.github.io/picori/coverage/badges/flat.svg)](https://julgodis.github.io/picori/coverage/)
+[![coverage](/../coverage/coverage/badges/flat.svg)](https://julgodis.github.io/picori/coverage/)
 
 Picori is a library for building modding tools and decompliation tools for
 GameCube and Wii games. It includes support to serialize and deserialize many
