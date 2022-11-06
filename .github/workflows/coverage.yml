@@ -1,0 +1,57 @@
+name: Coverage Report
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore: 
+      - 'coverage/**'
+  pull_request:
+    branches:
+      - master
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_and_test:
+    name: picori
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - nightly
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: install
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+          components: rustfmt, clippy, llvm-tools-preview
+      - name: coverage
+        env:
+          RUSTFLAGS: '-Cinstrument-coverage'
+          LLVM_PROFILE_FILE: 'temp/coverage/coverage-%p-%m.profraw'
+          CARGO_INCREMENTAL: '0'
+        run: |
+          mkdir -p temp/coverage/
+          cargo build --verbose
+          cargo test --verbose
+          ./grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "/*" -o ./coverage/lcov.info
+
+      - name: upload coverage
+        env: 
+          CI_COMMIT_MESSAGE: CI Coverage Report
+          CI_COMMIT_AUTHOR: CI
+        if: github.event_name == 'push'
+        run: |
+          git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
+          git config --global user.email "username@users.noreply.github.com"
+          git checkout -b coverage
+          git add coverage
+          git commit -m "${{ env.CI_COMMIT_MESSAGE }}"
+          git push

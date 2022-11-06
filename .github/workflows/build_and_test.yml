@@ -1,6 +1,14 @@
 name: Build & Test & Fmt & Clippy
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+    paths-ignore: 
+      - 'coverage/**'
+  pull_request:
+    branches:
+      - master
 
 env:
   CARGO_TERM_COLOR: always
@@ -16,12 +24,14 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: install
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           override: true
-          components: rustfmt, clippy
+          components: rustfmt, clippy, llvm-tools-preview
 
       - name: build
         run: cargo build --verbose
