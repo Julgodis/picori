@@ -40,6 +40,10 @@ pub enum DecompressionProblem {
     /// Decompression failed because of an unexpected end of data.
     #[error("unexpected EOD")]
     UnexpectedEndOfData,
+
+    /// Decompression failed because of an unexpected destination size.
+    #[error("invalid decompression size")]
+    InvalidDecompressedSize,
 }
 
 /// Enum for possible encoding problems that can occur.

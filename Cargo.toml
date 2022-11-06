@@ -9,7 +9,7 @@ license = "MIT"
 readme = "README.md"
 description = "Library building modding and decomplication tools for GameCube/Wii games"
 keywords = ["dol", "rel", "rarc", "yaz0", "gamecube"]
-categories = ["encoding", "compression", "parsing", "modding", "deomp"]
+categories = ["encoding", "compression", "parser-implementations"]
 
 build = "scripts/build.rs"
 publish = false
@@ -21,7 +21,7 @@ default = ["file", "compression", "encoding", "demangle", "ciso", "dol", "gcm", 
 # file formats
 file = []
 ciso = ["file"]
-gcm = ["file", "ascii"]
+gcm = ["file", "ascii", "dol"]
 dol = ["file"]
 rel = ["file"]
 

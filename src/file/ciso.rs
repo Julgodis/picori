@@ -90,9 +90,7 @@ impl<'reader, D: Deserializer + Seeker> Reader<'reader, D> {
     pub fn block_size(&self) -> usize { self.header.block_size }
 
     /// Get the total size of the decompressed file.
-    pub fn total_size(&self) -> usize {
-        self.header.blocks.len() * self.header.block_size
-    }
+    pub fn total_size(&self) -> usize { self.header.blocks.len() * self.header.block_size }
 
     /// Read data of block at index `index`. If the block is omitted, a zeroed
     /// buffer will be returned.
@@ -115,13 +113,10 @@ impl<'reader, D: Deserializer + Seeker> Reader<'reader, D> {
         }
     }
 
-    /// Decompress the CISO file into the writer [`std::io::Write`]. If you need
-    /// to know the final size of the decompressed file, use
+    /// Decompress all CISO block and write the data to [`std::io::Write`]. If
+    /// you need to know the final size of the decompressed file, use
     /// [`Reader::total_size`].
-    pub fn decompress<Writer: Write>(
-        &'reader mut self,
-        writer: &mut Writer,
-    ) -> Result<()> {
+    pub fn decompress<Writer: Write>(&'reader mut self, writer: &mut Writer) -> Result<()> {
         self.blocks().try_for_each(|x| match x {
             Ok(x) => Ok(writer.write_all(&x)?),
             Err(e) => Err(e),

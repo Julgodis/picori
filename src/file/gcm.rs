@@ -1,8 +1,30 @@
-use std::collections::HashMap;
-use std::io::{SeekFrom, Write};
+//! Deserialize and Serialize GameCube Master Disc (GCM) file. This file format is a direct copy of the
+//! GameCube disc.
+//!
+//! # Deserialize
+//!
+//! ```no_run
+//! # use std::fs::File;
+//! # use picori::Result;
+//! fn main() -> Result<()> {
+//!     let mut file = File::open("game.iso")?;
+//!     let _ = picori::file::gcm::parse(&mut file)?;
+//!     Ok(())
+//! }
+//! ```
+//!
+//! # Serialize
+//!
+//! TODO: Write this section.
 
+use std::collections::HashMap;
+use std::io::SeekFrom;
+use std::path::PathBuf;
+
+use super::dol::Dol;
 use crate::encoding::Ascii;
 use crate::error::DeserializeProblem::*;
+use crate::file::dol;
 use crate::helper::{ensure, Deserializer, Seeker};
 use crate::Result;
 
@@ -319,23 +341,36 @@ impl MainExecutable {
     }
 }
 
+/// Enum varient of a single [`Fst`] entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FSTEntry {
+pub enum FstEntry {
+    /// Root directory.
+    Root,
+    /// File.
     File {
+        /// Relative filename.
         name:   String,
+        /// `internal`: Entry index.
         index:  u32,
+        /// File offset from the beginning of the GCM file.
         offset: u32,
+        /// File size.
         size:   u32,
     },
+    /// Directory.
     Directory {
+        /// Relative directory name.
         name:   String,
+        /// `internal`: Parent index.
         parent: u32,
+        /// `internal`: First child index.
         begin:  u32,
+        /// `internal`: Last child index.
         end:    u32,
     },
 }
 
-enum _FstEntry {
+enum TempFstEntry {
     File {
         name:   u32,
         offset: u32,
@@ -348,7 +383,7 @@ enum _FstEntry {
     },
 }
 
-impl _FstEntry {
+impl TempFstEntry {
     pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
         let flag_or_name_offset = input.deserialize_bu32()?;
         let data_offset_or_parent = input.deserialize_bu32()?;
@@ -372,216 +407,145 @@ impl _FstEntry {
     }
 }
 
-pub struct FSTDecoder<'x, D: Deserializer + Seeker> {
-    pub entries: Vec<FSTEntry>,
-    reader:      &'x mut D,
-    fst_size:    usize,
+/// File String Table (`fst.bin`). The [`Fst`] contains information about the
+/// file structure of the GameCube disc, i.e. the file names and their
+/// locations.
+pub struct Fst {
+    entries: Vec<FstEntry>,
 }
 
-impl<'x, D: Deserializer + Seeker> FSTDecoder<'x, D> {
-    #[inline]
-    pub fn new(reader: &'x mut D, fst_size: usize) -> Result<Self> {
-        let mut decoder = Self {
-            entries: Vec::new(),
-            reader,
-            fst_size,
-        };
-        decoder.parse_entries()?;
-        Ok(decoder)
-    }
+impl Fst {
+    /// Deserialize a [`Fst`] from a
+    /// [Deserializer][`crate::helper::Deserializer`] +
+    /// [Seeker][`crate::helper::Seeker`].
+    ///
+    /// To read the full string table, this function needs the size of the
+    /// [`Fst`]. This is available in the [`Boot`] struct.
+    pub fn deserialize<D: Deserializer + Seeker>(reader: &mut D, fst_size: usize) -> Result<Fst> {
+        let base = reader.position()?;
 
-    fn parse_entries(&mut self) -> Result<()> {
-        let _ = self.reader.deserialize_bu32()?;
-        let _ = self.reader.deserialize_bu32()?;
-        let root_count = self.reader.deserialize_bu32()?;
+        let _ = reader.deserialize_bu32()?;
+        let _ = reader.deserialize_bu32()?;
+        let root_count = reader.deserialize_bu32()?;
         let entry_count = root_count as usize;
         ensure!(
             entry_count <= 0x4000,
             InvalidHeader("entry count limit (max 16384)")
         );
 
-        let entries = (1..entry_count)
-            .map(|_| _FstEntry::deserialize(self.reader))
+        reader.seek(SeekFrom::Start(base))?;
+        let temp_entries = (0..entry_count)
+            .map(|_| TempFstEntry::deserialize(reader))
             .collect::<Result<Vec<_>>>()?;
 
         let entry_size = 0x0C * entry_count;
-        let name_table_size = self.fst_size - entry_size;
-        let string_table = self.reader.read_buffer(name_table_size)?;
+        let name_table_size = fst_size - entry_size;
+        let string_table = reader.read_buffer(name_table_size)?;
 
-        for (i, entry) in entries.iter().enumerate() {
-            self.entries.push(match entry {
-                _FstEntry::File { name, offset, size } => FSTEntry::File {
+        let mut entries = Vec::with_capacity(entry_count);
+        for (i, entry) in temp_entries.iter().enumerate() {
+            if i == 0 {
+                entries.push(FstEntry::Root);
+                continue;
+            }
+
+            let entry = match entry {
+                TempFstEntry::File { name, offset, size } => FstEntry::File {
                     name:   Ascii::first(&string_table[*name as usize..])?,
                     index:  i as u32,
                     offset: *offset,
                     size:   *size,
                 },
-                _FstEntry::Directory { name, parent, end } => FSTEntry::Directory {
+                TempFstEntry::Directory { name, parent, end } => FstEntry::Directory {
                     name:   Ascii::first(&string_table[*name as usize..])?,
                     parent: *parent,
                     begin:  (i + 1) as u32,
-                    end:    *end - 1,
+                    end:    *end,
                 },
-            });
+            };
+
+            entries.push(entry);
         }
 
-        Ok(())
+        Ok(Fst { entries })
     }
 
-    pub fn write_file<W: Write>(&mut self, entry: &FSTEntry, _writer: &mut W) -> Result<()> {
-        match entry {
-            FSTEntry::File { offset, .. } => {
-                self.reader.seek(SeekFrom::Start(*offset as u64))?;
-
-                todo!()
-                /*
-                let mut buffer = MaybeUninit::<[u8; 0x1000]>::uninit();
-                let mut remaining = *size as isize;
-                while remaining > 0 {
-                    let read = self.reader.read_into_buffer(unsafe { &mut *buffer.as_mut_ptr() })?;
-                    writer.write(unsafe { &buffer.assume_init() })?;
-                    remaining -= read as isize;
-                }
-
-                Ok(())*/
-            },
-            _ => Err(InvalidData("not a file").into()),
+    /// Get an iterator over all [`FstEntry`]s.
+    pub fn files(&self) -> FstFileIterator {
+        FstFileIterator {
+            fst: self,
+            index: 0,
+            last_index_of_directory: vec![],
+            path: PathBuf::new(),
         }
     }
+}
 
-    #[inline]
-    pub fn file_data(&mut self, entry: &FSTEntry) -> Result<Vec<u8>> {
-        match entry {
-            FSTEntry::File { offset, size, .. } => {
-                self.reader.seek(SeekFrom::Start(*offset as u64))?;
-                Ok(self.reader.read_buffer(*size as usize)?)
-            },
-            _ => Err(InvalidData("not a file").into()),
-        }
-    }
+/// Iterator over all files in a [`Fst`].
+pub struct FstFileIterator<'fst> {
+    fst: &'fst Fst,
+    index: usize,
+    last_index_of_directory: Vec<usize>,
+    path: PathBuf,
+}
 
-    pub fn files(&self, directory: FSTEntry) -> Result<Vec<FSTEntry>> {
-        if let FSTEntry::Directory { begin, end, .. } = directory {
-            let mut files = Vec::new();
-            let mut index = begin as usize;
-            while index < end as usize {
-                let entry = &self.entries[index];
-                if let FSTEntry::File { .. } = entry {
-                    index += 1;
-                    files.push(entry.clone());
-                } else if let FSTEntry::Directory { end, .. } = entry {
-                    index = *end as usize;
-                    files.push(entry.clone());
-                }
+impl<'fst> Iterator for FstFileIterator<'fst> {
+    type Item = (PathBuf, FstEntry);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while !self.last_index_of_directory.is_empty() {
+            if self.last_index_of_directory.last() == Some(&self.index) {
+                self.last_index_of_directory.pop();
+                self.path.pop();
+            } else {
+                break;
             }
+        }
 
-            Ok(files)
-        } else {
-            Err(InvalidData("not a directory").into())
+        let entry = self.fst.entries.get(self.index)?;
+        self.index += 1;
+
+        match entry {
+            FstEntry::File { name, .. } => {
+                let path = self.path.join(name);
+                Some((path, entry.clone()))
+            },
+            FstEntry::Directory {
+                begin, end, name, ..
+            } => {
+                self.index = *begin as usize;
+                self.last_index_of_directory.push(*end as usize);
+                self.path.push(name);
+                Some((self.path.clone(), entry.clone()))
+            },
+            FstEntry::Root => Some((self.path.clone(), entry.clone())),
         }
     }
-
-    #[inline]
-    pub fn root_directory(&self) -> FSTEntry {
-        FSTEntry::Directory {
-            name:   String::from(""),
-            parent: 0,
-            begin:  0,
-            end:    self.entries.len() as u32,
-        }
-    }
-
-    // fn for_each_file<F, R>(
-    // &mut self,
-    // path: &mut PathBuf,
-    // index: &mut usize,
-    // entry: &FSTEntry,
-    // func: &mut F,
-    // ) -> R
-    // where
-    // F: FnMut(&mut Self, &Path, &FSTEntry) -> R,
-    // R: Try<Output = ()>,
-    // {
-    // match entry {
-    // FSTEntry::File { name, .. } => path.push(name),
-    // FSTEntry::Directory { name, .. } => path.push(name),
-    // };
-    //
-    // func(self, path.as_path(), entry)?;
-    //
-    // if let FSTEntry::Directory { begin, end, .. } = entry {
-    // index = *begin as usize;
-    // while *index < *end as usize {
-    // let next_entry = self.entries[*index].clone();
-    // self.for_each_file(path, index, &next_entry, func)?;
-    // }
-    // path.pop();
-    // } else {
-    // path.pop();
-    // index += 1;
-    // }
-    //
-    // R::from_output(())
-    // }
-    //
-    // #[inline]
-    // pub fn try_for_each<F, R>(&mut self, entry: FSTEntry, func: &mut F) -> R
-    // where
-    // F: FnMut(&mut Self, &Path, &FSTEntry) -> R,
-    // R: Try<Output = ()>,
-    // {
-    // let mut path = PathBuf::new();
-    // let mut index = match &entry {
-    // FSTEntry::File { .. } => 0,
-    // FSTEntry::Directory { begin, .. } => *begin as usize,
-    // };
-    //
-    // self.for_each_file(&mut path, &mut index, &entry, func)
-    // }
-    //
-    // pub fn for_each<F>(&mut self, entry: FSTEntry, mut func: F)
-    // where
-    // F: FnMut(&mut Self, &Path, &FSTEntry),
-    // {
-    // self.try_for_each(entry, &mut |decoder, path, entry| {
-    // func(decoder, path, entry);
-    // Ok::<(), ()>(())
-    // })
-    // .unwrap();
-    // }
-    //
-    // #[inline]
-    // pub fn try_for_each_all<F, R>(&mut self, func: &mut F) -> R
-    // where
-    // F: FnMut(&mut Self, &Path, &FSTEntry) -> R,
-    // R: Try<Output = ()>,
-    // {
-    // let root = self.root_directory();
-    // self.try_for_each(root, func)
-    // }
-    //
-    // #[inline]
-    // pub fn for_each_all<F>(&mut self, func: F)
-    // where
-    // F: FnMut(&mut Self, &Path, &FSTEntry),
-    // {
-    // let root = self.root_directory();
-    // self.for_each(root, func)
-    // }
 }
 
 pub struct GCM {
-    boot: Boot,
-    bi2:  Bi2,
+    boot:      Boot,
+    bi2:       Bi2,
     apploader: Apploader,
+    dol:       Dol,
+    fst:       Fst,
 }
 
 impl GCM {
+    /// Get reference to [`Boot`] struct.
     pub fn boot(&self) -> &Boot { &self.boot }
 
+    /// Get reference to [`Bi2`] struct.
     pub fn bi2(&self) -> &Bi2 { &self.bi2 }
 
+    /// Get reference to [`Apploader`] struct.
     pub fn apploader(&self) -> &Apploader { &self.apploader }
+
+    /// Get reference to [`Dol`] struct.
+    pub fn dol(&self) -> &Dol { &self.dol }
+
+    /// Get reference to [`Fst`] struct.
+    pub fn fst(&self) -> &Fst { &self.fst }
 }
 
 pub fn parse<D: Deserializer + Seeker>(reader: &mut D) -> Result<GCM> {
@@ -605,9 +569,19 @@ pub fn parse<D: Deserializer + Seeker>(reader: &mut D) -> Result<GCM> {
         InvalidData("invalid apploader")
     );
 
-    reader.seek(SeekFrom::Start(boot.main_executable_offset as u64))?;
+    reader.seek(SeekFrom::Start(
+        position + boot.main_executable_offset as u64,
+    ))?;
+    let dol = dol::parse(reader)?;
 
-    reader.seek(SeekFrom::Start(boot.fst_offset as u64))?;
+    reader.seek(SeekFrom::Start(position + boot.fst_offset as u64))?;
+    let fst = Fst::deserialize(reader, boot.fst_size as usize)?;
 
-    Ok(GCM { boot, bi2, apploader })
+    Ok(GCM {
+        boot,
+        bi2,
+        apploader,
+        dol,
+        fst,
+    })
 }

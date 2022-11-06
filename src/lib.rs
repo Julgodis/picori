@@ -1,11 +1,12 @@
-#![doc(html_logo_url = "https://raw.githubusercontent.com/Julgodis/picori/master/assets/images/picori_logo_512.png")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/Julgodis/picori/master/assets/images/picori_logo_512.png"
+)]
 #![doc = include_str!("../README.md")]
-
 // TODO: Is there any performance benefit of allowing uninit vec unsafe code?
 #![allow(clippy::uninit_vec)]
 // TODO: deny missing_docs once all public items have docs
 #![allow(missing_docs)]
-#![deny(warnings)]
+#![warn(warnings)]
 
 #[cfg(feature = "compression")]
 pub mod compression;

@@ -15,15 +15,11 @@ pub trait Deserializer: Reader {
 
     /// Read a single u16 in native endian.
     #[inline]
-    fn deserialize_u16(&mut self) -> Result<u16> {
-        self.deserialize_eu16::<NativeEndian>()
-    }
+    fn deserialize_u16(&mut self) -> Result<u16> { self.deserialize_eu16::<NativeEndian>() }
 
     /// Read a single u32 in native endian.
     #[inline]
-    fn deserialize_u32(&mut self) -> Result<u32> {
-        self.deserialize_eu32::<NativeEndian>()
-    }
+    fn deserialize_u32(&mut self) -> Result<u32> { self.deserialize_eu32::<NativeEndian>() }
 
     /// Read a single u16 in big endian.
     #[inline]
@@ -35,15 +31,11 @@ pub trait Deserializer: Reader {
 
     /// Read a single u16 in little endian.
     #[inline]
-    fn deserialize_lu16(&mut self) -> Result<u16> {
-        self.deserialize_eu16::<LittleEndian>()
-    }
+    fn deserialize_lu16(&mut self) -> Result<u16> { self.deserialize_eu16::<LittleEndian>() }
 
     /// Read a single u32 in little endian.
     #[inline]
-    fn deserialize_lu32(&mut self) -> Result<u32> {
-        self.deserialize_eu32::<LittleEndian>()
-    }
+    fn deserialize_lu32(&mut self) -> Result<u32> { self.deserialize_eu32::<LittleEndian>() }
 
     /// Read string with the given encoding until the NUL character is
     /// encountered or `L` bytes have been read.
@@ -62,9 +54,7 @@ pub trait Deserializer: Reader {
     }
 
     /// Read array of endian agnostic u16 with the given length `L`.
-    fn deserialize_eu16_array<E: EndianAgnostic, const L: usize>(
-        &mut self,
-    ) -> Result<[u16; L]> {
+    fn deserialize_eu16_array<E: EndianAgnostic, const L: usize>(&mut self) -> Result<[u16; L]> {
         let mut buf = self.read_fixed_buffer_cge::<u16, L>()?;
         for value in buf.iter_mut().take(L) {
             *value = E::u16_from_native(*value);
@@ -85,9 +75,7 @@ pub trait Deserializer: Reader {
     }
 
     /// Read array of endian agnostic u32 with the given length `L`.
-    fn deserialize_eu32_array<E: EndianAgnostic, const L: usize>(
-        &mut self,
-    ) -> Result<[u32; L]> {
+    fn deserialize_eu32_array<E: EndianAgnostic, const L: usize>(&mut self) -> Result<[u32; L]> {
         let mut buf = self.read_fixed_buffer_cge::<u32, L>()?;
         for value in buf.iter_mut().take(L) {
             *value = E::u32_from_native(*value);
@@ -183,8 +171,8 @@ mod tests {
     #[test]
     fn u32_array() {
         let mut data: &[u8] = &[
-            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x01, 0x02, 0x03, 0x04, 0x05,
-            0x06, 0x07, 0x08,
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+            0x07, 0x08,
         ];
         assert_eq!(data.deserialize_bu32_array::<2>().unwrap(), [
             0x01020304, 0x05060708

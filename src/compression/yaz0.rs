@@ -27,7 +27,7 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn from_bytes<D: Deserializer>(input: &mut D) -> Result<Header> {
+    pub fn deserialize<D: Deserializer>(input: &mut D) -> Result<Header> {
         Ok(Header {
             magic: input.deserialize_bu32()?,
             decompressed_size: input.deserialize_bu32()?,
@@ -39,79 +39,85 @@ impl Header {
     pub fn is_valid(&self) -> bool { self.magic == 0x59617A30 }
 }
 
-pub fn is_compressed<D: Deserializer + Seeker>(input: &mut D) -> bool {
+pub struct Yaz0Reader<D: Deserializer + Seeker> {
+    reader: D,
+    decompressed_size: u32,
+}
+
+impl<D: Deserializer + Seeker> Yaz0Reader<D> {
+    pub fn new(mut reader: D) -> Result<Yaz0Reader<D>> {
+        let header = Header::deserialize(&mut reader)?;
+        ensure!(header.is_valid(), InvalidHeader("invalid magic"));
+        Ok(Yaz0Reader {
+            reader,
+            decompressed_size: header.decompressed_size,
+        })
+    }
+
+    pub fn decompressed_size(&self) -> u32 { self.decompressed_size }
+
+    pub fn decompress(&mut self) -> Result<Vec<u8>> {
+        let mut output = vec![0; self.decompressed_size as usize];
+        self.decompress_into(output.as_mut_slice())?;
+        Ok(output)
+    }
+
+    pub fn decompress_into(&mut self, destination: &mut [u8]) -> Result<()> {
+        ensure!(
+            destination.len() as u32 >= self.decompressed_size,
+            InvalidDecompressedSize
+        );
+
+        let size = self.decompressed_size as usize;
+        let mut dest = 0;
+        let mut code = 0;
+        let mut code_bits = 0;
+
+        while dest < size {
+            if code_bits == 0 {
+                code = self.reader.deserialize_u8()? as u32;
+                code_bits = 8;
+            }
+
+            if code & 0x80 != 0 {
+                let byte = self.reader.deserialize_u8()?;
+                destination[dest] = byte;
+                dest += 1;
+            } else {
+                let byte0 = self.reader.deserialize_u8()?;
+                let byte1 = self.reader.deserialize_u8()?;
+                let a = (byte0 & 0xf) as usize;
+                let b = (byte0 >> 4) as usize;
+                let offset = (a << 8) | (byte1 as usize);
+                let length = match b {
+                    0 => (self.reader.deserialize_u8()? as usize) + 0x12,
+                    length => length + 2,
+                };
+
+                ensure!(offset < dest, UnexpectedEndOfData);
+                let base = dest - (offset + 1);
+                for n in 0..length {
+                    destination[dest] = destination[base + n];
+                    dest += 1;
+                }
+            }
+
+            code <<= 1;
+            code_bits -= 1;
+        }
+
+        Ok(())
+    }
+}
+
+pub fn is_yaz0<D: Deserializer + Seeker>(input: &mut D) -> bool {
     let mut check = || -> Result<bool> {
         let base = input.position()?;
-        let is_compressed = Header::from_bytes(input).map(|header| header.is_valid());
+        let header = Header::deserialize(input)?;
+        let is_compressed = header.is_valid();
         input.seek(SeekFrom::Start(base))?;
-        is_compressed
+        Ok(is_compressed)
     };
 
     check().unwrap_or(false)
-}
-
-pub fn decompress<D: Deserializer + Seeker>(input: &mut D) -> Result<Vec<u8>> {
-    let header = Header::from_bytes(input)?;
-    ensure!(header.is_valid(), InvalidHeader("invalid yaz0 header"));
-
-    let current = input.position()?;
-    input.seek(SeekFrom::End(0))?;
-    let compressed_size = input.position()?;
-    input.seek(SeekFrom::Start(current))?;
-
-    let mut dest = vec![0_u8; header.decompressed_size as usize];
-    let mut source = vec![0_u8; compressed_size as usize];
-    input.read_into_buffer(source.as_mut_slice())?; // TODO: use `read_buffer`
-    decompress_to_buffer(dest.as_mut_slice(), source.as_slice())?;
-
-    Ok(dest)
-}
-
-pub fn decompress_to_buffer(dest: &mut [u8], source: &[u8]) -> Result<()> {
-    let mut i = 0;
-    let mut j = 0;
-
-    loop {
-        ensure!(i < source.len(), UnexpectedEndOfData);
-        let code = source[i];
-        i += 1;
-
-        for k in 0..8 {
-            if j >= dest.len() {
-                return Ok(());
-            }
-
-            if (code & (0x80 >> k)) != 0 {
-                ensure!(i < source.len(), UnexpectedEndOfData);
-                dest[j] = source[i];
-                i += 1;
-                j += 1;
-            } else {
-                ensure!(i + 1 < source.len(), UnexpectedEndOfData);
-                let byte0 = source[i] as usize;
-                let byte1 = source[i + 1] as usize;
-                i += 2;
-
-                let a = (byte0 >> 4) & 0x0F;
-                let b = byte0 & 0x0F;
-
-                let mut length = a;
-                if length == 0 {
-                    ensure!(i < source.len(), UnexpectedEndOfData);
-                    length = source[i] as usize + 0x12;
-                    i += 1;
-                } else {
-                    length += 2;
-                }
-
-                let offset = ((b << 8) | byte1) + 1;
-                ensure!(offset >= j, UnexpectedEndOfData);
-                ensure!(j - offset + length < dest.len(), UnexpectedEndOfData);
-                for _ in 0..length {
-                    dest[j] = dest[j - offset];
-                    j += 1;
-                }
-            }
-        }
-    }
 }

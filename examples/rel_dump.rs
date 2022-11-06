@@ -3,7 +3,8 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use colored::{ColoredString, Colorize};
-use picori::file::rel::{ImportKind, Rel, RelocationKind};
+use picori::file::rel::{ImportKind, Rel, RelReader, RelocationKind};
+use picori::{Deserializer, Seeker};
 
 extern crate picori;
 
@@ -32,7 +33,7 @@ struct Args {
     /// Dump relocations
     #[arg(short, long)]
     relocations: bool,
-    /// Dump data
+    /// Dump section data
     #[arg(short, long)]
     data:        bool,
     /// Dump all
@@ -47,7 +48,7 @@ fn hex4(value: u16) -> ColoredString { format!("{:#06x}", value).cyan() }
 fn hex8(value: u32) -> ColoredString { format!("{:#010x}", value).cyan() }
 fn num(value: u32) -> ColoredString { format!("{}", value).cyan() }
 
-fn output_header(rel: &Rel) {
+fn output_header<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
     println!("header:");
     println!("  module: {}", num(rel.module));
     println!("  version: {}", num(rel.version));
@@ -98,7 +99,7 @@ fn output_header(rel: &Rel) {
     );
 }
 
-fn output_sections(rel: &Rel) {
+fn output_sections<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
     println!("sections:");
     for (i, section) in rel.sections.iter().enumerate() {
         println!(
@@ -130,7 +131,7 @@ fn output_sections(rel: &Rel) {
     }
 }
 
-fn output_imports(rel: &Rel) {
+fn output_imports<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
     println!("import tables:");
     for (i, table) in rel.import_tables.iter().enumerate() {
         println!(
@@ -175,7 +176,7 @@ fn output_imports(rel: &Rel) {
     }
 }
 
-fn output_relocations(rel: &Rel) {
+fn output_relocations<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
     println!("relocation:");
 
     for (i, relocation) in rel.relocations().enumerate() {
@@ -205,6 +206,55 @@ fn output_relocations(rel: &Rel) {
     }
 }
 
+fn output_data(data: &Vec<u8>, width: usize) {
+    for (j, line) in data.chunks(width).enumerate() {
+        print!("{:06x}: ", j * 32);
+        for byte in line {
+            print!("{:02x} ", byte);
+        }
+        println!();
+    }
+}
+
+fn output_sections_data<D: Deserializer + Seeker>(rel: &mut RelReader<D>, width: usize) {
+    println!("sections:");
+    for i in 0..rel.sections.len() {
+        let section = rel.section_at(i).unwrap();
+        println!("  [ section: {:>2} ]", num(i as u32));
+        output_data(&section.1, width);
+    }
+}
+
+fn output<D: Deserializer + Seeker>(
+    rel: &mut RelReader<D>,
+    dump_header: bool,
+    dump_sections: bool,
+    dump_imports: bool,
+    dump_relocations: bool,
+    dump_data: bool,
+    width: usize,
+) {
+    if dump_header {
+        output_header(rel);
+    }
+
+    if dump_sections {
+        output_sections(rel);
+    }
+
+    if dump_imports {
+        output_imports(rel);
+    }
+
+    if dump_relocations {
+        output_relocations(rel);
+    }
+
+    if dump_data {
+        output_sections_data(rel, width);
+    }
+}
+
 fn main() {
     let args = Args::parse();
 
@@ -213,6 +263,10 @@ fn main() {
     let mut dump_imports = args.imports;
     let mut dump_relocations = args.relocations;
     let mut dump_data = args.data;
+    let width = match args.width {
+        0 => 1,
+        _ => args.width,
+    };
 
     if args.all {
         dump_header = true;
@@ -230,30 +284,30 @@ fn main() {
     let file = std::fs::File::open(args.path).unwrap();
     let mut file = std::io::BufReader::new(file);
 
-    let rel = if picori::compression::yaz0::is_yaz0(&mut file) {
+    if picori::compression::yaz0::is_yaz0(&mut file) {
         let mut reader = picori::compression::Yaz0Reader::new(file).unwrap();
         let decompressed = reader.decompress().unwrap();
         let mut cursor = Cursor::new(decompressed);
-        picori::file::rel::parse(&mut cursor).unwrap()
+        let mut rel = picori::file::rel::RelReader::new(cursor).unwrap();
+        output(
+            &mut rel,
+            dump_header,
+            dump_sections,
+            dump_imports,
+            dump_relocations,
+            dump_data,
+            width,
+        );
     } else {
-        picori::file::rel::parse(&mut file).unwrap()
+        let mut rel = picori::file::rel::RelReader::new(file).unwrap();
+        output(
+            &mut rel,
+            dump_header,
+            dump_sections,
+            dump_imports,
+            dump_relocations,
+            dump_data,
+            width,
+        );
     };
-
-    if dump_header {
-        output_header(&rel);
-    }
-
-    if dump_sections {
-        output_sections(&rel);
-    }
-
-    if dump_imports {
-        output_imports(&rel);
-    }
-
-    if dump_relocations {
-        output_relocations(&rel);
-    }
-
-    if dump_data {}
 }
