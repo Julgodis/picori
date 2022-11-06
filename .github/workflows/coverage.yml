@@ -1,4 +1,4 @@
-name: Coverage Report
+name: coverage
 
 on:
   push:
@@ -11,7 +11,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build_and_test:
+  build_coverage:
     name: picori
     runs-on: ubuntu-latest
     strategy:
