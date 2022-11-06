@@ -1,43 +1,41 @@
 //! GameCube CISO (Compact ISO).
 //!
-//! CISO is also known as WIB. It is a compressed format that support any
-//! underlying file format, i.e., must not be used to ISO files.
+//! CISO is also known as WIB. It is a compressed format that can to wrap any
+//! other format, i.e., it must not be used we GameCube/Wii ISOs or [GCM][`super::gcm`].
+//!
+//! ## Examples
+//!
+//! TODO: Add examples
 
-use std::{io::{Read, Seek, SeekFrom, Write}, result::Result};
+use std::io::{Read, Seek, SeekFrom, Write};
+use std::result::Result;
 
-use crate::stream::{DeserializeError, DeserializeStream, Deserializeble};
+use crate::error::{FormatError, PicoriError};
+use crate::helper::read_extension::ReadExtension;
 
 /// CISO magic number representing the four characters "CISO".
 static MAGIC: u32 = 0x4F534943;
 
 #[derive(Debug)]
 struct Header {
-    magic:       u32,
-    block_size:  usize,
-    block_total: usize,
-    blocks:      Vec<(usize, bool)>,
+    block_size: usize,
+    blocks:     Vec<(usize, bool)>,
 }
 
-impl Deserializeble for Header {
-    fn deserialize_stream<D: DeserializeStream>(input: &mut D) -> Result<Self, DeserializeError> {
-        let mut magic = [0u8; 4];
-        input.read_stream(&mut magic)?;
-        let magic = u32::from_le_bytes(magic);
-
-        let mut block_size = [0u8; 4];
-        input.read_stream(&mut block_size)?;
-        let block_size = u32::from_le_bytes(block_size) as usize;
-
-        
+impl Header {
+    pub fn deserialize<Reader>(input: &mut Reader) -> Result<Self, PicoriError>
+    where
+        Reader: ReadExtension + Seek,
+    {
+        let magic = input.read_bu32()?;
+        let block_size = input.read_bu32()? as usize;
         if magic != MAGIC {
-            return Err(DeserializeError::InvalidHeader("invalid magic"));
+            return Err(FormatError::InvalidHeader("invalid magic").into());
         } else if block_size <= 0x8000 || block_size > 0x80000000 {
-            return Err(DeserializeError::InvalidHeader("invalid block size"));
+            return Err(FormatError::InvalidHeader("invalid block size").into());
         }
 
-        let mut block_map = [0u8; 0x8000 - 8];
-        input.read_stream(&mut block_map)?;
-
+        let block_map = input.read_bu8_array::<{ 0x8000 - 8 }>()?;
         let block_total = block_map
             .iter()
             .enumerate()
@@ -51,12 +49,7 @@ impl Deserializeble for Header {
             .map(|x| (x.0, *x.1 == 1))
             .collect();
 
-        Ok(Header {
-            magic,
-            block_size,
-            block_total,
-            blocks,
-        })
+        Ok(Header { block_size, blocks })
     }
 }
 
@@ -66,11 +59,13 @@ pub struct CisoDecoder<'x, R: Read + Seek> {
     data_offset: u64,
 }
 
-impl<'x, R: Read + Seek> CisoDecoder<'x, R> {
-    pub fn new(reader: &'x mut R) -> Result<Self, DeserializeError> {
-        let header = Header::deserialize_stream(reader)?;
+impl<'x, Reader> CisoDecoder<'x, Reader>
+where
+    Reader: ReadExtension + Seek,
+{
+    pub fn new(reader: &'x mut Reader) -> Result<Self, PicoriError> {
+        let header = Header::deserialize(reader)?;
         let data_offset = reader.stream_position()?;
-        println!("header: {:?}", header);
         Ok(Self {
             header,
             reader,
@@ -78,7 +73,10 @@ impl<'x, R: Read + Seek> CisoDecoder<'x, R> {
         })
     }
 
-    pub fn decode<W: Write>(&mut self, writer: &mut W) -> Result<(), DeserializeError> {
+    pub fn decode<Writer>(&mut self, writer: &mut Writer) -> Result<(), PicoriError>
+    where
+        Writer: Write,
+    {
         self.reader.seek(SeekFrom::Start(self.data_offset))?;
 
         let zero_block = vec![0 as u8; self.header.block_size];
@@ -87,10 +85,6 @@ impl<'x, R: Read + Seek> CisoDecoder<'x, R> {
             .blocks
             .iter()
             .try_for_each(|(_i, data_or_zero)| {
-                println!(
-                    "block: {:8} ({:8}) {}",
-                    _i, self.header.block_total, data_or_zero
-                );
                 match data_or_zero {
                     true => {
                         self.reader.read_exact(&mut data_block)?;

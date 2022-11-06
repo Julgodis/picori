@@ -1,17 +1,18 @@
-//! Picori is a library for building modding and decompliation tools for
-//! GameCube and Wii games. It includes support encoding and decoding many of
-//! Nintendos file formats, support for common compression algorithms, and
-//! support to demangle C++ symbols.
+//! Picori is a library for building modding tools and decompliation tools for
+//! GameCube and Wii games. It includes support for encoding and decoding many
+//! of Nintendos file formats, common compression algorithms, non-english string
+//! encodings and the ability to demangle C++ symbols.
 //!
-//! ## Formats
+//! # Formats
 //!
 //! Picori supports the following formats:
 //!
-//! - DOL - Dolphin Executable
-//! - REL - Relocatable Executable
-//! - GCM - GameCube Master Disc
-//! - RARC - Nintendo RARC
-//! - ELF - Executable and Linkable Format[^note-elf]
+//! - [DOL - Dolphin Executable][`format::dol`]
+//! - [REL - Relocatable Executable][`format::rel`]
+//! - [GCM - GameCube Master Disc][`format::gcm`]
+//! - [RARC - Nintendo RARC][`format::rarc`]
+//! - [CISO - Compact ISO (WIB)][`format::ciso`]
+//! - [ELF - Executable and Linkable Format][`format::elf`][^note-elf]
 //!
 //! In the future adding support for more formats is planned.
 //!
@@ -20,35 +21,40 @@
 //! instead they produce ELF files. Support for   ELF (specific to GameCube and
 //! Wii) are useful.
 //!
-//! ## Compression
+//! # Compression
 //!
 //! Picori supports the following compression algorithms:
 //!
-//! - Yaz0
-//! - Yay0
+//! - [Yaz0][`compression::yaz0`]
+//! - [Yay0][`compression::yaz0`]
 //!
-//! ## C++ Demangler
+//! # C++ Demangler
 //!
-//! Picori also includes a C++ demangler for the compiler used to compile
-//! GameCube games. The only compiler that is supported at the moment is MWCC
-//! (etrowerks CodeWarrior Compiler).
+//! Picori also includes a [C++ demangler][`demangle::mwcc`] for MWCC (Metrowerks CodeWarrior
+//! Compiler) that was probably include and shipped with the SDK and used for
+//! GameCube development.
+//! 
+//! # Examples
+//! 
+//! TODO: Add examples
 //! 
 
-#![feature(try_trait_v2)]
-#![feature(maybe_uninit_uninit_array)]
-#![feature(read_buf)]
 
-pub mod format;
+#![feature(try_trait_v2)]
+
 pub mod compression;
 pub mod demangle;
+pub mod endian;
+pub mod format;
 pub mod string;
 
 mod error;
 mod helper;
-mod stream;
-mod endian;
 
-pub use self::stream::Deserializeble;
-pub use self::stream::DeserializeError;
+pub use error::*;
 
-pub use self::helper::SliceReader;
+pub mod internal {
+    //! Structs and functions that are used internally, these are exposed for
+    //! publicly for convience.
+    pub use super::helper::reader::SliceReader;
+}

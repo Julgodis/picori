@@ -1,6 +1,6 @@
 [package]
 name = "picori"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 readme = "README.md"
@@ -9,19 +9,13 @@ description = "Library for decompliation of GameCube/Wii games"
 keywords = ["dol", "rel", "rarc", "yaz0", "yay0", "gcm", "decompilation"]
 categories = ["encoding", "compression", "parsing"]
 publish = false
-build = "build/build.rs"
+build = "scripts/build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
-log = "0.4"
 thiserror = "1.0"
 itertools = "0.10"
-owning_ref = "0.4"
-lazy_static = "1.4"
-flate2 = "1.0"
 
 [build-dependencies]
-anyhow = "1.0"
-chrono = "0.4"
+thiserror = "1.0"

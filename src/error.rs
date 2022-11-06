@@ -1,46 +1,82 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum DolError {
-    #[error("Invalid header size: requires `0x100` bytes, got `{size:?}` bytes")]
-    InvalidHeaderSize { size: usize },
+#[non_exhaustive]
+pub enum FormatError {
+    #[error("invalid header: {0}")]
+    InvalidHeader(&'static str),
 
-    #[error("Invalid text section `{section:?}`: offset out of bounds")]
-    TextSectionOutOfBounds { section: usize },
-
-    #[error("Invalid data section `{section:?}`: offset out of bounds")]
-    DataSectionOutOfBounds { section: usize },
+    #[error("invalid data: {0}")]
+    InvalidData(&'static str),
 }
 
 #[derive(Error, Debug)]
-pub enum DecompressionError {
-    #[error("Invalid header")]
+#[non_exhaustive]
+pub enum CompressionError {
+    #[error("invalid header")]
     InvalidHeader(),
 
-    #[error("Missing data")]
-    MissingData(),
-
-    #[error("Invalid source offset")]
-    InvalidSourceOffset(),
-
-    #[error("Invalid destination offset")]
-    InvalidDestinationOffset(),
+    #[error("invalid data")]
+    InvalidData(),
 }
 
 #[derive(Error, Debug)]
+pub enum StringEncodingError {
+    #[error("unable to decode: {0}")]
+    UnableToDecode(&'static str),
+
+    #[error("unable to encode: {0}")]
+    UnableToEncode(&'static str),
+}
+
+impl StringEncodingError {
+    pub fn new<X>(other: X) -> Self
+    where
+        X: Into<StringEncodingError>,
+    {
+        return other.into();
+    }
+}
+
+#[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum PicoriError {
-    #[error("Integer overflow occured")]
+    #[error("integer overflow error")]
     IntegerOverflow(),
 
-    #[error("Parse error: {error:?}")]
-    Dol {
-        #[from]
-        error: DolError,
-    },
+    #[error("format error: {0}")]
+    Format(#[from] FormatError),
 
-    #[error("Decompression error: {error:?}")]
-    Decompression {
-        #[from]
-        error: DecompressionError,
-    },
+    #[error("compression error: {0}")]
+    Compression(#[from] CompressionError),
+
+    #[error("string encoding error: {0}")]
+    StringEncodingError(#[from] StringEncodingError),
+
+    #[error("io error")]
+    IoError(#[from] std::io::Error),
+
+    #[error("utf8 error")]
+    Utf8Error(#[from] std::str::Utf8Error),
 }
+
+impl PicoriError {
+    pub fn new<T>(error: T) -> Self
+    where
+        T: Into<PicoriError>,
+    {
+        error.into()
+    }
+}
+
+
+
+macro_rules! ensure {
+    ($cond:expr, $err:expr) => {
+        if !$cond {
+            return Err($err.into());
+        }
+    };
+}
+
+pub(crate) use ensure;

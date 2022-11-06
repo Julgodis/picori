@@ -2,7 +2,7 @@ use picori::format::dol;
 
 #[cfg(test)]
 mod dol_tests {
-    use picori::SliceReader;
+    use picori::internal::SliceReader;
 
     use super::*;
 

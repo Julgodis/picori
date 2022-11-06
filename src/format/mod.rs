@@ -1,18 +1,13 @@
-//! Encoding and decoding of various Nintendo file formats used by GameCube and Wii games.
+//! Deserialize and Serialize of various Nintendo file formats used by GameCube and Wii games.
 //! 
-//! 
-
-use anyhow::{Result};
+//! Formats supported:
+//! - [DOL - Dolphin Executable][`dol`]
+//! - [REL - Relocatable Executable][`rel`]
+//! - [GCM - GameCube Master Disc][`gcm`]
+//! - [RARC - Nintendo RARC][`rarc`]
+//! - [CISO - Compact ISO (WIB])[`ciso`]
+//! - [ELF - Executable and Linkable Format][`elf`]
 
 pub mod dol;
 pub mod gcm;
 pub mod ciso;
-
-pub trait Encodable {
-    fn to_bytes(&self) -> Result<Vec<u8>>;
-}
-
-pub trait Decodable<T> {
-    fn identify_as(input: &[u8]) -> bool;
-    fn from_bytes(input: &[u8]) -> Result<T>;
-}

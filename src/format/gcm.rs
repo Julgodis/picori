@@ -1,12 +1,11 @@
 use std::collections::HashMap;
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{Seek, SeekFrom, Write};
 use std::mem::MaybeUninit;
-use std::ops::{ControlFlow, Try};
-use std::path::{self, Path, PathBuf};
-use std::str::FromStr;
+use std::ops::Try;
+use std::path::{Path, PathBuf};
 
-use crate::helper::{align_next, read_bu32, ReadExtension};
-use crate::stream::{DeserializeError, DeserializeStream, Deserializeble};
+use crate::error::{ensure, FormatError, PicoriError};
+use crate::helper::read_extension::ReadExtension;
 use crate::string::ascii::{AsciiEncoding, AsciiEncodingTrait};
 
 #[derive(Debug)]
@@ -36,7 +35,7 @@ pub struct Boot {
 }
 
 impl Boot {
-    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, DeserializeError> {
+    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
         let console_id = input.read_bu8()?;
         let game_code = input.read_bu8_array::<2>()?;
         let country_code = input.read_bu8()?;
@@ -167,7 +166,7 @@ impl Bi2 {
 }
 
 impl Bi2 {
-    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, DeserializeError> {
+    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
         let values = input
             .read_bu32_array::<{ 0x2000 / 4 }>()?
             .iter()
@@ -191,21 +190,25 @@ pub struct Apploader {
 }
 
 impl Apploader {
-    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, DeserializeError> {
+    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
         let date = input.read_string::<0x10, AsciiEncoding>()?;
         let entrypoint = input.read_bu32()?;
         let size = input.read_bu32()?;
         let trailer_size = input.read_bu32()?;
         let unknown = input.read_bu32()?;
 
-        println!("Apploader: date: {}, entrypoint: 0x{:08X}, size: 0x{:08X}, trailer_size: 0x{:08X}, unknown: 0x{:08X}", date, entrypoint, size, trailer_size, unknown);
+        println!(
+            "Apploader: date: {}, entrypoint: 0x{:08X}, size: 0x{:08X}, trailer_size: 0x{:08X}, \
+             unknown: 0x{:08X}",
+            date, entrypoint, size, trailer_size, unknown
+        );
 
         let data_size = (size + trailer_size) as usize;
         let mut data = Vec::<u8>::with_capacity(data_size);
         unsafe {
             data.set_len(data_size);
         }
-        input.read_stream(&mut data)?;
+        input.read_exact(&mut data)?;
 
         Ok(Self {
             date,
@@ -224,7 +227,7 @@ pub struct MainExecutable {
 }
 
 impl MainExecutable {
-    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, DeserializeError> {
+    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
         let base = input.stream_position()?;
         let text_offsets = input.read_bu32_array::<{ 4 * 7 }>()?;
         let data_offsets = input.read_bu32_array::<{ 4 * 11 }>()?;
@@ -241,20 +244,17 @@ impl MainExecutable {
             .zip(data_sizes.iter())
             .map(|(offset, size)| offset + size);
 
-        let total_size =
-            text_iter
-                .chain(data_iter)
-                .max()
-                .ok_or(DeserializeError::InvalidHeader(
-                    "unable to find executable size",
-                ))?;
+        let total_size = text_iter
+            .chain(data_iter)
+            .max()
+            .ok_or(FormatError::InvalidHeader("unable to find executable size"))?;
 
         input.seek(SeekFrom::Start(base))?;
         let mut data = Vec::<u8>::with_capacity(total_size as usize);
         unsafe {
             data.set_len(total_size as usize);
         }
-        input.read_stream(&mut data)?;
+        input.read_exact(&mut data)?;
 
         Ok(Self { data })
     }
@@ -290,7 +290,7 @@ enum _FstEntry {
 }
 
 impl _FstEntry {
-    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, DeserializeError> {
+    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
         let flag_or_name_offset = input.read_bu32()?;
         let data_offset_or_parent = input.read_bu32()?;
         let data_length_or_end = input.read_bu32()?;
@@ -317,30 +317,29 @@ pub struct FSTDecoder<'x, Reader: ReadExtension + Seek> {
     pub entries: Vec<FSTEntry>,
     reader:      &'x mut Reader,
     fst_size:    usize,
-    base:        u64,
 }
 
 impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
-    pub fn new(reader: &'x mut Reader, fst_size: usize) -> Result<Self, DeserializeError> {
-        let base = reader.stream_position()?;
+    #[inline]
+    pub fn new(reader: &'x mut Reader, fst_size: usize) -> Result<Self, PicoriError> {
         let mut decoder = Self {
             entries: Vec::new(),
             reader,
             fst_size,
-            base,
         };
         decoder.parse_entries()?;
         Ok(decoder)
     }
 
-    fn parse_entries(&mut self) -> Result<(), DeserializeError> {
-        let _1 = self.reader.read_bu32()?;
-        let _2 = self.reader.read_bu32()?;
+    fn parse_entries(&mut self) -> Result<(), PicoriError> {
+        let _ = self.reader.read_bu32()?;
+        let _ = self.reader.read_bu32()?;
         let root_count = self.reader.read_bu32()?;
         let entry_count = root_count as usize;
-        if entry_count > 0x2000 {
-            return Err(DeserializeError::InvalidHeader("entry count limit reached"));
-        }
+        ensure!(
+            entry_count <= 0x4000,
+            FormatError::InvalidHeader("entry count limit (max 16384)")
+        );
 
         let entries = (1..entry_count)
             .map(|_| _FstEntry::deserialize(self.reader))
@@ -377,7 +376,7 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
         &mut self,
         entry: &FSTEntry,
         writer: &mut W,
-    ) -> Result<(), DeserializeError> {
+    ) -> Result<(), PicoriError> {
         match entry {
             FSTEntry::File { offset, size, .. } => {
                 self.reader.seek(SeekFrom::Start(*offset as u64))?;
@@ -392,11 +391,12 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
 
                 Ok(())
             },
-            _ => Err(DeserializeError::InvalidData("not a file")),
+            _ => Err(FormatError::InvalidData("not a file").into()),
         }
     }
 
-    pub fn file_data(&mut self, entry: &FSTEntry) -> Result<Vec<u8>, DeserializeError> {
+    #[inline]
+    pub fn file_data(&mut self, entry: &FSTEntry) -> Result<Vec<u8>, PicoriError> {
         match entry {
             FSTEntry::File { offset, size, .. } => {
                 self.reader.seek(SeekFrom::Start(*offset as u64))?;
@@ -405,11 +405,11 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
                 self.reader.read_exact(&mut data)?;
                 Ok(data)
             },
-            _ => Err(DeserializeError::InvalidData("not a file")),
+            _ => Err(FormatError::InvalidData("not a file").into()),
         }
     }
 
-    pub fn files(&self, directory: FSTEntry) -> Result<Vec<FSTEntry>, DeserializeError> {
+    pub fn files(&self, directory: FSTEntry) -> Result<Vec<FSTEntry>, PicoriError> {
         if let FSTEntry::Directory { begin, end, .. } = directory {
             let mut files = Vec::new();
             let mut index = begin as usize;
@@ -426,10 +426,11 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
 
             Ok(files)
         } else {
-            Err(DeserializeError::InvalidData("not a directory"))
+            Err(FormatError::InvalidData("not a directory").into())
         }
     }
 
+    #[inline]
     pub fn root_directory(&self) -> FSTEntry {
         FSTEntry::Directory {
             name:   String::from(""),
@@ -458,7 +459,7 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
         func(self, path.as_path(), entry)?;
 
         if let FSTEntry::Directory { begin, end, .. } = entry {
-            *index  = *begin as usize;
+            *index = *begin as usize;
             while *index < *end as usize {
                 let next_entry = self.entries[*index].clone();
                 self.for_each_file(path, index, &next_entry, func)?;
