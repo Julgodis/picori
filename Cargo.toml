@@ -12,7 +12,15 @@ keywords = ["dol", "rel", "rarc", "yaz0", "gamecube"]
 categories = ["encoding", "compression", "parser-implementations"]
 
 build = "scripts/build.rs"
-publish = false
+
+include = [
+    "LICENSE",
+    "README.md",
+    "examples/*",
+    "scripts/*",
+    "src/*",
+    "assets/build/*",
+]
 
 [features]
 
