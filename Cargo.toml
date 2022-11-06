@@ -1,6 +1,6 @@
 [package]
 name = "picori"
-version = "0.1.1"
+version = "0.1.0"
 edition = "2021"
 authors = ["Julgodis <self@julgodis.xyz>"]
 
@@ -15,20 +15,6 @@ build = "scripts/build.rs"
 publish = false
 
 [features]
-# by default, picori will be built with all features enabled
-default = ["ciso", "dol", "gcm", "rel", "yaz0", "ascii", "jis_x_0201", "shift_jis_1997", "shift_jis_2004", "source_location"]
-
-ciso = []
-gcm = ["ascii", "dol"]
-dol = []
-rel = []
-yaz0 = []
-ascii = []
-jis_x_0201 = []
-shift_jis_1997 = ["jis_x_0201"]
-shift_jis_2004 = ["jis_x_0201"]
-
-source_location = []
 
 [dependencies]
 thiserror = "1.0"

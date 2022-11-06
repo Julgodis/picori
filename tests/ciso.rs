@@ -2,7 +2,7 @@
 mod ciso {
     use std::io::Cursor;
 
-    use picori::ciso::Reader;
+    use picori::CisoReader;
 
     #[test]
     fn reader() {
@@ -19,7 +19,7 @@ mod ciso {
         ciso.extend_from_slice(&[9, 9, 9, 9]);
 
         let mut reader = Cursor::new(ciso);
-        let mut decoder = Reader::new(&mut reader).unwrap();
+        let mut decoder = CisoReader::new(&mut reader).unwrap();
         assert!(decoder.block_size() == 0x04);
         assert!(decoder.total_size() == 0x04 * 10);
 
@@ -44,7 +44,7 @@ mod ciso {
         ciso.extend_from_slice(&[0, 0, 0, 0]);
         ciso.extend_from_slice(&[0x00, 0x00, 0x00, 0x04]);
         ciso.extend_from_slice(&[1_u8; 0x7FF8]);
-        assert!(Reader::new(&mut Cursor::new(ciso)).is_err());
+        assert!(CisoReader::new(&mut Cursor::new(ciso)).is_err());
     }
 
     #[test]
@@ -53,13 +53,13 @@ mod ciso {
         ciso.extend_from_slice(&[0x4F, 0x53, 0x49, 0x43]);
         ciso.extend_from_slice(&[0, 0, 0, 0]);
         ciso.extend_from_slice(&[1_u8; 0x7FF8]);
-        assert!(Reader::new(&mut Cursor::new(ciso)).is_err());
+        assert!(CisoReader::new(&mut Cursor::new(ciso)).is_err());
 
         let mut ciso = Vec::<u8>::new();
         ciso.extend_from_slice(&[0x4F, 0x53, 0x49, 0x43]);
         ciso.extend_from_slice(&[0xFF, 0xFF, 0xFF, 0xFF]);
         ciso.extend_from_slice(&[1_u8; 0x7FF8]);
-        assert!(Reader::new(&mut Cursor::new(ciso)).is_err());
+        assert!(CisoReader::new(&mut Cursor::new(ciso)).is_err());
     }
 
     #[test]
@@ -68,7 +68,7 @@ mod ciso {
         ciso.extend_from_slice(&[0x4F, 0x53, 0x49, 0x43]);
         ciso.extend_from_slice(&[0x00, 0x00, 0x00, 0x04]);
         ciso.extend_from_slice(&[0_u8; 0x7FF8]);
-        assert!(Reader::new(&mut Cursor::new(ciso)).is_err());
+        assert!(CisoReader::new(&mut Cursor::new(ciso)).is_err());
     }
 
     #[test]
@@ -82,7 +82,7 @@ mod ciso {
         ciso.extend_from_slice(&[1]);
 
         let mut reader = Cursor::new(ciso);
-        let mut decoder = Reader::new(&mut reader).unwrap();
+        let mut decoder = CisoReader::new(&mut reader).unwrap();
         let result = decoder.decompress(&mut Cursor::new([0; 4]));
         assert!(result.is_err());
     }
@@ -98,7 +98,7 @@ mod ciso {
         ciso.extend_from_slice(&[1, 1, 1, 1]);
 
         let mut reader = Cursor::new(ciso);
-        let mut decoder = Reader::new(&mut reader).unwrap();
+        let mut decoder = CisoReader::new(&mut reader).unwrap();
 
         let result = decoder.blocks().count();
         assert_eq!(result, 2);

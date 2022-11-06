@@ -1,14 +1,18 @@
-use crate::error::ParseProblem;
-use crate::helper::{ensure, ProblemLocation};
-use crate::{Ascii, Deserializer, Result};
+//! [GCM][`crate::gcm`] Boot Header (`boot.bin`). This is the first 0x440 bytes
+//! of the GCM image.
 
+use crate::error::ParseProblem;
+use crate::helper::{ensure, Parser, ProblemLocation};
+use crate::{Ascii, Result};
+
+/// [`Boot`] Console Type.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ConsoleType {
+    /// Nintendo GameCube.
     GameCube,
 }
 
-/// GCM Boot Header (`boot.bin`). This is the first 0x440 bytes of the GCM
-/// image.
+/// [GCM][`crate::gcm`] Boot Header (`boot.bin`) object.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Boot {
     /// Console.
@@ -69,7 +73,7 @@ pub struct Boot {
 
 impl Boot {
     /// Parse GCM Boot.
-    pub fn from_binary<D: Deserializer>(input: &mut D) -> Result<Self> {
+    pub fn from_binary<D: Parser>(input: &mut D) -> Result<Self> {
         let console = input.deserialize_u8()?;
         let game_code = input.deserialize_u8_array::<2>()?;
         let country_code = input.deserialize_u8()?;

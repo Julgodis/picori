@@ -1,7 +1,19 @@
+//! [GCM][`crate::gcm`] Boot information (`bi2.bin`). Directly follows the boot
+//! header (at 0x440) and is always 0x2000 bytes. It seems to contain
+//! information about optionss that are passed to the Boot Stage and
+//! Apploader[^note-bi2].
+//!
+//! [^note-bi2]: This implementation assume that there are 0x800 individual options that
+//! can be set to any value. This is not necessarily true, the structure of this
+//! file is not well understood. Only the first 0x28 bytes are known to be
+//! used.
+
 use std::collections::HashMap;
 
-use crate::{Deserializer, Result};
+use crate::helper::Parser;
+use crate::Result;
 
+/// [`Bi2`] Options.
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, PartialOrd, Ord)]
 pub enum Bi2Options {
     /// Debug monitor size  (unknown purpose).
@@ -77,14 +89,7 @@ impl From<usize> for Bi2Options {
     }
 }
 
-/// GCM Boot information (`bi2.bin`). Directly follows the boot header (at
-/// 0x440) and is always 0x2000 bytes. It seems to contain information about
-/// optionss that are passed to the Boot Stage and Apploader[^note-bi2].
-///
-/// [^note-bi2]: This implementation assume that there is 0x800 individual optionss that
-/// can be set to any value. This is not necessarily true, the structure of this
-/// file is  not well understood. Only the first 0x28 bytes are known to be
-/// used.
+/// [GCM][`crate::gcm`] Boot information (`bi2.bin`) object.
 #[derive(Debug, Default)]
 pub struct Bi2 {
     // TODO: HashMap or Array?
@@ -101,12 +106,13 @@ impl Bi2 {
     /// Clear options value.
     pub fn clear(&mut self, options: Bi2Options) { self.options.remove(&options); }
 
+    /// Get all options.
     pub fn options(&self) -> &HashMap<Bi2Options, u32> { &self.options }
 }
 
 impl Bi2 {
     /// Parse GCM BI2.
-    pub fn from_binary<D: Deserializer>(input: &mut D) -> Result<Self> {
+    pub fn from_binary<D: Parser>(input: &mut D) -> Result<Self> {
         let options = input
             .deserialize_bu32_array::<{ 0x2000 / 4 }>()?
             .iter()

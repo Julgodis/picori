@@ -1,86 +1,137 @@
-//! Deserialize and Serialize Dolphin Executables (`.dol` files).
+//! Parse Relocatable module (`.rel`).
 //!
-//! # Deserialize
+//! # Parse
 //!
-//! Deserialization can be done by calling [`parse`].
+//! Parse from binary stream by calling [`Rel::from_binary`]. On error a
+//! [Error][`crate::Error`] is return. Otherwise, the parsing succeeded and you
+//! get back a [`Rel`] struct.
 //!
-//! ## Examples
+//! ## Example
 //!
-//! TODO: Add examples
+//! This is an example of how to parse a `.rel` file.
+//!
+//! ```no_run
+//! # use std::fs::File;
+//! # use picori::Result;
+//! fn main() -> Result<()> {
+//!     let mut file = File::open("module.rel")?;
+//!     let _ = picori::Rel::from_binary(&mut file)?;
+//!     Ok(())
+//! }
+//! ```
 
 use std::io::SeekFrom;
 
 use crate::error::ParseProblem;
-use crate::helper::{ensure, Deserializer, ProblemLocation, Seeker};
+use crate::helper::{ensure, Parser, ProblemLocation, Seeker};
 use crate::Result;
 
+/// `.rel` file object.
+#[derive(Debug, Clone)]
 pub struct Rel {
     /// The module number. Must be unique per `.rel` file.
-    pub module:        u32,
+    pub module: u32,
     /// The version number of the `.rel` file.
-    pub version:       u32,
+    pub version: u32,
     /// The offset of the name of the module. The name is available in the
     /// `framework.str`.
-    pub name_offset:   u32,
+    pub name_offset: u32,
     /// The size of the name of the module.
-    pub name_size:     u32,
+    pub name_size: u32,
     /// Sections.
-    pub sections:      Vec<Section>,
+    pub sections: Vec<Section>,
+    /// Import tables.
     pub import_tables: Vec<ImportTable>,
     /// The prolog symbol.
-    pub prolog:        Option<Symbol>,
+    pub prolog: Option<Symbol>,
     /// The epilog symbol.
-    pub epilog:        Option<Symbol>,
+    pub epilog: Option<Symbol>,
     /// The unresolved symbol. This function is called when a symbol is not
     /// could not be resolved.
-    pub unresolved:    Option<Symbol>,
-
-    pub alignment:         u32,
-    pub bss_alignment:     u32,
-    pub fix_size:          u32,
+    pub unresolved: Option<Symbol>,
+    /// Section alignment.
+    pub alignment: u32,
+    /// `.bss` section alignment.
+    pub bss_alignment: u32,
+    /// `parse`: Unknown.
+    pub fix_size: u32,
+    /// `parse`: Relocation offset.
     pub relocation_offset: Option<u32>,
-    pub import_offset:     Option<u32>,
-    pub import_size:       Option<u32>,
+    /// `parse`: Import offset.
+    pub import_offset: Option<u32>,
+    /// `parse`: Import size.
+    pub import_size: Option<u32>,
 }
 
+/// Relocatable module section.
 #[derive(Debug, Clone, Default)]
 pub struct Section {
+    /// Offset in the `.rel` file.
     pub offset:     u32,
+    /// Size of the section.
     pub size:       u32,
+    /// Executable flag.
     pub executable: bool,
+    /// Unknown flag.
     pub unknown:    bool,
+    /// Section data.
     pub data:       Vec<u8>,
 }
 
+/// Import kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportKind {
+    /// No-op import.
     None,
+    /// R_PPC_ADDR32 relocation (`S + A`).
     Addr32,
+    /// R_PPC_ADDR24 relocation (`(S + A) >> 2`).
     Addr24,
+    /// R_PPC_ADDR16 relocation (`S + A`).
     Addr16,
+    /// R_PPC_ADDR16_LO relocation (`#lo(S + A)`).
     Addr16Lo,
+    /// R_PPC_ADDR16_HI relocation (`#hi(S + A)`).
     Addr16Hi,
+    /// R_PPC_ADDR16_HA relocation (`#ha(S + A)`).
     Addr16Ha,
+    /// R_PPC_ADDR14 relocation (`(S + A) >> 2`).
     Addr14,
+    /// R_PPC_REL24 relocation (`(S + A - P) >> 2`).
     Rel24,
+    /// R_PPC_REL14 relocation (`(S + A - P) >> 2`).
     Rel14,
+    /// Dolphin-specific relocation, used to support long offset values.
     DolphinNop,
+    /// Dolphin-specific relocation, used to set target section.
     DolphinSection,
+    /// Dolphin-specific relocation, indicates end of import table.
     DolphinEnd,
+    /// Dolphin-specific relocation, unknown purpose.
     DolphinMRKREF,
 }
 
+/// Import.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Import {
+    /// Kind of the import.
     pub kind:    ImportKind,
+    /// Section of imported symbol.
     pub section: u8,
+    /// Offset of imported symbol.
     pub offset:  u16,
+    /// Import addend.
     pub addend:  u32,
 }
 
+/// Import table.
+#[derive(Debug, Clone)]
 pub struct ImportTable {
+    /// Import table for module.
     pub module:  u32,
+    /// Offset to import table in the `.rel` file.
     pub offset:  u32,
+    /// List of imports.
     pub imports: Vec<Import>,
 }
 
@@ -93,15 +144,16 @@ pub struct Symbol {
     pub offset:  u32,
 }
 
+/// Reference to section and offset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-/// Reference to bytes in a section.
-pub struct Location {
-    /// Section where the bytes are located.
+pub struct SectionOffset {
+    /// Section.
     pub section: u32,
-    /// Offset of the bytes in the section.
+    /// Offset in the section.
     pub offset:  u32,
 }
 
+/// Relocation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Relocation {
     /// Relocation kind. This is the same as the import kind. But `Dolphin*` are
@@ -110,14 +162,18 @@ pub struct Relocation {
     /// Module of the referenced symbol.
     pub module:    u32,
     /// Reference to the symbol.
-    pub reference: Location,
-    /// Where the relocation is located (the location of the bytes that should
-    /// be modified).
-    pub target:    Location,
+    pub reference: SectionOffset,
+    /// Where the relocation is located (where the location of the bytes that
+    /// should be modified are).
+    pub target:    SectionOffset,
 }
 
 impl Rel {
-    pub fn from_binary<D: Deserializer + Seeker>(mut reader: D) -> Result<Self> {
+    /// Parse [`Rel`] from binary stream.
+    ///
+    /// This function _should_ not panic and if any error occurs, it will return
+    /// [`Err`] of type [`Error`][`crate::Error`]/[`ParseProblem`].
+    pub fn from_binary<D: Parser + Seeker>(mut reader: D) -> Result<Self> {
         let base = reader.position()?;
         let module = reader.deserialize_bu32()?;
         let _next = reader.deserialize_bu32()?; // should be 0, used at runtime
@@ -201,6 +257,7 @@ impl Rel {
         })
     }
 
+    /// Relocation iterator.
     pub fn relocations(&self) -> RelocationIterator {
         RelocationIterator {
             rel:     self,
@@ -223,7 +280,7 @@ fn optional_symbol(section: u8, offset: u32) -> Option<Symbol> {
     }
 }
 
-fn parse_sections<D: Deserializer + Seeker>(
+fn parse_sections<D: Parser + Seeker>(
     reader: &mut D,
     base: u64,
     section_offset: u32,
@@ -261,7 +318,7 @@ fn parse_sections<D: Deserializer + Seeker>(
     Ok(sections)
 }
 
-fn parse_imports<D: Deserializer + Seeker>(
+fn parse_imports<D: Parser + Seeker>(
     reader: &mut D,
     base: u64,
     import_offset: u32,
@@ -330,6 +387,7 @@ fn parse_imports<D: Deserializer + Seeker>(
     Ok(import_tables)
 }
 
+/// An iterator over the relocations in [`Rel`].
 pub struct RelocationIterator<'rel> {
     rel:     &'rel Rel,
     table:   usize,
@@ -383,11 +441,11 @@ impl<'rel> Iterator for RelocationIterator<'rel> {
                     let relocation = Relocation {
                         kind,
                         module: table.module,
-                        reference: Location {
+                        reference: SectionOffset {
                             section: import.section as u32,
                             offset:  import.addend,
                         },
-                        target: Location {
+                        target: SectionOffset {
                             section: section as u32,
                             offset:  self.offset + import.offset as u32,
                         },

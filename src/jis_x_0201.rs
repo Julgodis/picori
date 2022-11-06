@@ -1,26 +1,28 @@
+//! [`JisX0201`] encoding.
+//!
+//! [JIS X 0201][`JisX0201`] (ANK) is a single-byte encoding specified by JIS
+//! (Japanese Industrial Standards) and is built upon the 7-bit
+//! [ASCII][`crate::Ascii`] encoding. The first 7-bit are untouched
+//! except for two characters. The [ASCII][`crate::Ascii`] character
+//! `0x5C` (Reverse Solidus) replaced by the Unicode character 'U+00A5' (Yen
+//! Sign) and the [ASCII][`crate::Ascii`] character `0x7E` (Tilde)
+//! replaced by the Unicode character `U+203E` (Overline). The eighth bit
+//! provide space for the phonetic Japanese katakana signs in half-width style.
+//!
+//! [JIS X 0201][`JisX0201`] is encoding that [Shift
+//! JIS][`crate::ShiftJis1997`] is based upon.
+
 use std::borrow::Borrow;
 use std::marker::PhantomData;
 
 use crate::error::DecodingProblem::*;
-use crate::helper::DeserializableStringEncoding;
+use crate::helper::ParseStringEncoding;
 use crate::Result;
 
-/// [JIS X 0201][`JisX0201`] (ANK) is a single-byte encoding specified by JIS
-/// (Japanese Industrial Standards) and is built upon the 7-bit
-/// [ASCII][`crate::encoding::Ascii`] encoding. The first 7-bit are untouched
-/// except for two characters. The [ASCII][`crate::encoding::Ascii`] character
-/// `0x5C` (Reverse Solidus) replaced by the Unicode character 'U+00A5' (Yen
-/// Sign) and the [ASCII][`crate::encoding::Ascii`] character `0x7E` (Tilde)
-/// replaced by the Unicode character `U+203E` (Overline). The eighth bit
-/// provide space for the phonetic Japanese katakana signs in half-width style.
-///
-/// [JIS X 0201][`JisX0201`] is encoding that [Shift
-/// JIS][`crate::encoding::ShiftJis1997`] is based upon.
-///
-/// # Examples
-/// TODO: Add examples
+/// [`JisX0201`] encoding.
 pub struct JisX0201 {}
 
+/// A iterator decoder for the [`JisX0201`] encoding.
 pub struct Decoder<'x, I>
 where
     I: IntoIterator,
@@ -42,6 +44,7 @@ where
         }
     }
 
+    /// Decode a single byte.
     pub fn decode_byte(byte: u8) -> Option<char> {
         match byte {
             // Modified ASCII character
@@ -134,8 +137,8 @@ where
 {
 }
 
-impl DeserializableStringEncoding for JisX0201 {
-    fn deserialize_str<I>(iter: I) -> Result<String>
+impl ParseStringEncoding for JisX0201 {
+    fn parse_str<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
         I::Item: Borrow<u8> + Sized,
@@ -153,8 +156,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deserialize_str() {
+    fn parse_str() {
         let data = b"abc\0def";
-        assert_eq!(JisX0201::deserialize_str(data).unwrap(), "abc".to_string());
+        assert_eq!(JisX0201::parse_str(data).unwrap(), "abc".to_string());
     }
 }

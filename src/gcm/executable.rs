@@ -1,17 +1,21 @@
+//! [GCM][`crate::gcm`] executable file. This is the [DOL][`crate::dol`] file
+//! that contains the actual game code.
+
 use std::io::SeekFrom;
 
 use crate::error::ParseProblem;
-use crate::helper::ProblemLocation;
-use crate::{Deserializer, Result, Seeker};
+use crate::helper::{Parser, ProblemLocation, Seeker};
+use crate::Result;
 
+/// [GCM][`crate::gcm`] executable file object.
 #[derive(Debug, Default)]
 pub struct Executable {
-    pub data: Vec<u8>,
+    data: Vec<u8>,
 }
 
 impl Executable {
-    // Parse GCM executable (DOL) from binary.
-    pub fn from_binary<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
+    /// Parse [GCM][`crate::gcm`] executable ([DOL][`crate::dol`]) from binary.
+    pub fn from_binary<D: Parser + Seeker>(input: &mut D) -> Result<Self> {
         let base = input.position()?;
         let text_offsets = input.deserialize_bu32_array::<7>()?;
         let data_offsets = input.deserialize_bu32_array::<11>()?;
@@ -41,4 +45,7 @@ impl Executable {
         let data = input.read_as_vec(total_size as usize)?;
         Ok(Self { data })
     }
+
+    /// Get the executable data.
+    pub fn data(&self) -> &[u8] { &self.data }
 }

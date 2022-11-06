@@ -1,4 +1,4 @@
-//! Parse Dolphin Executables (`.dol` files).
+//! Parse Dolphin executables (`.dol`).
 //!
 //! # Parse
 //!
@@ -24,7 +24,7 @@
 use std::io::{Cursor, SeekFrom};
 
 use crate::helper::alignment::AlignPowerOfTwo;
-use crate::helper::{ensure, Deserializer, ParseProblem, ProblemLocation, Seeker};
+use crate::helper::{ensure, ParseProblem, Parser, ProblemLocation, Seeker};
 use crate::Result;
 
 /// `Dolphin Executable` header (native endian).
@@ -81,7 +81,7 @@ pub struct Section {
     /// The section name (e.g. `.text`, `.data`, `.rodata`, etc.), this was
     /// guessed from the type of section and order in which they appear in
     /// the `Dolphin Executable`. This is not guaranteed to be correct.
-    /// [`section_name`] is responsible for guessing the name of the
+    /// [`Section::guess_name`] is responsible for guessing the name of the
     /// section.
     pub name: &'static str,
 
@@ -157,7 +157,7 @@ pub struct BssInitInfoList {
     pub entries: Vec<BssInitInfo>,
 }
 
-/// Deserialized `.dol` file.
+/// `.dol` file object.
 #[derive(Debug, Clone)]
 pub struct Dol {
     /// Header.
@@ -174,8 +174,8 @@ pub struct Dol {
 }
 
 impl RomCopyInfo {
-    /// Deserialize [`RomCopyInfo`] from a [`ReadExtension`].
-    fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Self> {
+    /// Parse [`RomCopyInfo`] from binary stream.
+    fn from_binary<D: Parser + Seeker>(reader: &mut D) -> Result<Self> {
         let rom_copy_info: Result<_> = {
             let rom_address = reader.deserialize_bu32()?;
             let ram_address = reader.deserialize_bu32()?;
@@ -194,8 +194,8 @@ impl RomCopyInfo {
 }
 
 impl BssInitInfo {
-    /// Deserialize [`BssInitInfo`] from a [`ReadExtension`].
-    fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Self> {
+    /// Parse [`BssInitInfo`] from binary stream.
+    fn from_binary<D: Parser + Seeker>(reader: &mut D) -> Result<Self> {
         let bss_init_info: Result<_> = {
             let ram_address = reader.deserialize_bu32()?;
             let size = reader.deserialize_bu32()?;
@@ -218,14 +218,14 @@ fn rom_copy_info_search(data: &[u8], address: u32) -> Option<RomCopyInfoList> {
     };
 
     for offset in offset..data.len() {
-        if let Ok(rom_copy_info) = RomCopyInfo::from_bytes(&mut Cursor::new(&data[offset..])) {
+        if let Ok(rom_copy_info) = RomCopyInfo::from_binary(&mut Cursor::new(&data[offset..])) {
             if rom_copy_info.ram_address == address
                 && rom_copy_info.rom_address == address
                 && rom_copy_info.size < 0x2000000
             {
                 let rom_copy_info = data[offset..]
                     .chunks(12)
-                    .map(|x| RomCopyInfo::from_bytes(&mut Cursor::new(x)))
+                    .map(|x| RomCopyInfo::from_binary(&mut Cursor::new(x)))
                     .filter_map(|x| x.ok())
                     .take_while(|x| x.ram_address != 0)
                     .collect::<Vec<_>>();
@@ -251,11 +251,11 @@ fn bss_init_info_search(data: &[u8], address: u32) -> Option<BssInitInfoList> {
     };
 
     for offset in offset..data.len() {
-        if let Ok(bss_init_info) = BssInitInfo::from_bytes(&mut Cursor::new(&data[offset..])) {
+        if let Ok(bss_init_info) = BssInitInfo::from_binary(&mut Cursor::new(&data[offset..])) {
             if bss_init_info.ram_address == address && bss_init_info.size < 0x2000000 {
                 let bss_init_info = data[offset..]
                     .chunks(8)
-                    .map(|x| BssInitInfo::from_bytes(&mut Cursor::new(x)))
+                    .map(|x| BssInitInfo::from_binary(&mut Cursor::new(x)))
                     .filter_map(|x| x.ok())
                     .take_while(|x| x.ram_address != 0)
                     .collect::<Vec<_>>();
@@ -291,7 +291,7 @@ impl Section {
         })
     }
 
-    fn read_data<D: Deserializer + Seeker>(&mut self, reader: &mut D, base: u64) -> Result<()> {
+    fn read_data<D: Parser + Seeker>(&mut self, reader: &mut D, base: u64) -> Result<()> {
         if self.size > 0 && self.offset.is_some() {
             ensure!(
                 self.size <= 0x2000000,
@@ -346,13 +346,11 @@ impl Section {
 }
 
 impl Dol {
-    /// Deserialize [`Dol`] from a [`Deserializer`] + [`Seeker`].
-    ///
-    /// # Panic
-    ///
-    /// This function will not panic if the input is invalid. Any invalid input
-    /// will be returned as an error.
-    pub fn from_binary<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol> {
+    /// Parse [`Dol`] from binary stream.
+    /// 
+    /// This function _should_ not panic and if any error occurs, it will return
+    /// [`Err`] of type [`Error`][`crate::Error`]/[`ParseProblem`].
+    pub fn from_binary<D: Parser + Seeker>(reader: &mut D) -> Result<Dol> {
         let base = reader.position()?;
 
         let text_offset = reader.deserialize_bu32_array::<7>()?;

@@ -1,20 +1,44 @@
-//! GameCube CISO (Compact ISO).
+//! GameCube [CISO][`crate::ciso`] (Compact ISO).
 //!
-//! CISO (Compact ISO) is a simple format for reducing files that contains large
-//! runs of zero bytes. The unerlying file is chunked into N blocks (N <= 32760)
-//! for an arbitrary block size. Blocks with zero data will be omitted from the
-//! compressed file.
+//! [CISO][`crate::ciso`] (Compact ISO) is a simple format for reducing files
+//! that contains large runs of zero bytes. The unerlying file is chunked into
+//! `N` blocks (`N` <= 32760) for an arbitrary block size. Blocks with zero data
+//! will be omitted from the compressed file.
 //!
-//! ## Examples
+//! # Parse
 //!
-//! TODO: Add examples
+//! Because decompress [CISO][`crate::ciso`] files can be rather large, the
+//! [`CisoReader`] type is used to parse the file. The [`CisoReader`] will parse
+//! the file header to determine how many blocks that are used. What you do with
+//! the blocks is up to you, they can be access via [`CisoReader::blocks`]. To
+//! decompress the whole file at once, use [`CisoReader::decompress`].
+//!
+//! ## Example
+//!
+//! This is an example of parse and decompress a [CISO][`crate::ciso`] file.
+//!
+//! ```no_run
+//! # use std::fs::File;
+//! # use picori::Result;
+//! fn main() -> Result<()> {
+//!     let mut input = File::open("compact_disc.iso")?;
+//!     let mut reader = picori::CisoReader::new(&mut file)?;
+//!
+//!     let mut output = OpenOptions::new()
+//!         .write(true)
+//!         .create(true)
+//!         .open("disc.iso")?;
+//!     reader.decompress(&mut output)?;
+//!     Ok(())
+//! }
+//! ```
 
 use std::io::{SeekFrom, Write};
 
-use crate::helper::{Deserializer, ParseProblem, ProblemLocation, Seeker};
+use crate::helper::{ParseProblem, Parser, ProblemLocation, Seeker};
 use crate::Result;
 
-/// CISO magic number representing the four characters "CISO".
+/// [CISO][`crate::ciso`] magic number representing the four characters "CISO".
 static MAGIC: u32 = 0x4F534943;
 
 #[derive(Debug)]
@@ -24,7 +48,7 @@ struct Header {
 }
 
 impl Header {
-    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
+    pub fn from_binary<D: Parser + Seeker>(input: &mut D) -> Result<Self> {
         let magic = input.deserialize_bu32()?;
         let block_size = input.deserialize_bu32()? as usize;
         if magic != MAGIC {
@@ -74,20 +98,20 @@ impl Header {
     }
 }
 
-/// Parse CISO files and provides a simple API to access each block.
+/// Reader for [CISO][`crate::ciso`] files.
 ///
 /// # Examples
 /// TODO: Add examples
-pub struct Reader<'reader, D: Deserializer + Seeker> {
+pub struct CisoReader<'reader, D: Parser + Seeker> {
     header:      Header,
     reader:      &'reader mut D,
     data_offset: u64,
 }
 
-impl<'reader, D: Deserializer + Seeker> Reader<'reader, D> {
-    /// Create a new CISO reader from a [`Deserializer`] + [`Seeker`].
+impl<'reader, D: Parser + Seeker> CisoReader<'reader, D> {
+    /// Create a new [CISO][`crate::ciso`] reader from a binary stream.
     pub fn new(reader: &'reader mut D) -> Result<Self> {
-        let header = Header::deserialize(reader)?;
+        let header = Header::from_binary(reader)?;
         let data_offset = reader.position()?;
         Ok(Self {
             header,
@@ -96,7 +120,7 @@ impl<'reader, D: Deserializer + Seeker> Reader<'reader, D> {
         })
     }
 
-    /// Get the block size of the CISO file.
+    /// Get the block size of the [CISO][`crate::ciso`] file.
     pub fn block_size(&self) -> usize { self.header.block_size }
 
     /// Get the total size of the decompressed file.
@@ -123,9 +147,9 @@ impl<'reader, D: Deserializer + Seeker> Reader<'reader, D> {
         }
     }
 
-    /// Decompress all CISO block and write the data to [`std::io::Write`]. If
+    /// Decompress all [CISO][`crate::ciso`] block and write the data to a [`std::io::Write`]. If
     /// you need to know the final size of the decompressed file, use
-    /// [`Reader::total_size`].
+    /// [`CisoReader::total_size`].
     pub fn decompress<Writer: Write>(&'reader mut self, writer: &mut Writer) -> Result<()> {
         self.blocks().try_for_each(|x| match x {
             Ok(x) => Ok(writer.write_all(&x)?),
@@ -134,13 +158,13 @@ impl<'reader, D: Deserializer + Seeker> Reader<'reader, D> {
     }
 }
 
-/// Iterator over all blocks of a CISO file.
-pub struct BlockIterator<'reader, 'x, D: Deserializer + Seeker> {
-    reader: &'reader mut Reader<'x, D>,
+/// Iterator over all blocks of a [CISO][`crate::ciso`] file.
+pub struct BlockIterator<'reader, 'x, D: Parser + Seeker> {
+    reader: &'reader mut CisoReader<'x, D>,
     index:  usize,
 }
 
-impl<'reader, 'x, D: Deserializer + Seeker> Iterator for BlockIterator<'reader, 'x, D> {
+impl<'reader, 'x, D: Parser + Seeker> Iterator for BlockIterator<'reader, 'x, D> {
     type Item = Result<Vec<u8>>;
 
     fn next(&mut self) -> Option<Self::Item> {

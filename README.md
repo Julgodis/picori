@@ -17,7 +17,7 @@
 [![coverage](/../coverage/coverage/badges/flat.svg)](https://julgodis.github.io/picori/coverage/)
 [![license](https://img.shields.io/crates/l/picori)](https://github.com/Julgodis/picori/LICENSE)
 
-Picori is a library for decompilation, modding, and rom-hacking with focus on GameCube and Wii games. It support parsing and building common file formats, e.g., Dolphin executables (DOLs). 
+Picori (ピッコル) is a library for decompilation, modding, and rom-hacking with focus on GameCube and Wii games. It support parsing and building common file formats, e.g., Dolphin executables (DOLs). 
 
 [Features](#features) •
 [Usage](#usage) •
@@ -33,21 +33,37 @@ Picori is a library for decompilation, modding, and rom-hacking with focus on Ga
 
 ## Features
 
--   DOL (Dolphin Executable)
--   REL (Relocatable Executable)
--   GCM (GameCube Master Disc)
+-   DOL (Dolphin executable)
+-   REL (Relocatable module)
+-   GCM (GameCube master disc)
 -   CISO (Compact ISO)
--   Yaz0
--   JIS X 0201
--   Shift JIS (1997 and 2004)
+-   Yaz0 compression
+-   JIS X 0201 encoding
+-   Shift JIS encoding
 
 ## Usage
 
-**TODO: Add usage**
+Here is a simple example of how to use Picori to parse a DOL file and print the entry point.
+
+```rust
+use std::fs::File;
+use picori::Result;
+fn main() -> Result<()> {
+    let mut file = File::open("main.dol")?;
+    let dol = picori::Dol::from_binary(&mut file)?;
+    println!("entry point: {:#08x}", dol.entry_point());
+    Ok(())
+}
+```
 
 ## Examples
 
-**TODO: Add examples**
+The `examples` directory contains a few examples of how to use
+Picori.
+
+* [`dol_dump`](examples/dol_dump.rs) - Dump information about a `.dol` file.
+* [`rel_dump`](examples/rel_dump.rs) - Dump information about a `.rel` file.
+* [`gcm_dump`](examples/gcm_dump.rs) - Dump information about a `.gcm`/`.iso` file.
 
 ## Installation
 

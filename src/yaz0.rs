@@ -2,12 +2,21 @@
 //!
 //! ## Compression
 //!
-//! TODO: Add documentation.
+//! Compression is not yet supported.
 //!
 //! ## Decompression
 //!
-//! TODO: Add documentation.
-//!
+//! ```no_run
+//! # use std::fs::File;
+//! # use picori::Result;
+//! fn main() -> Result<()> {
+//!     let mut file = File::open("data.yaz0")?;
+//!     let reader = picori::Yaz0Reader::new(file)?;
+//!     let _ = reader.decompress()?;
+//!     Ok(())
+//! }
+//! ```
+//! 
 //! ## References
 //!
 //! [Yaz0](http://www.amnoid.de/gc/yaz0.txt) - Implementation of the decompression algorithm is based
@@ -16,10 +25,10 @@
 use std::io::SeekFrom;
 
 use crate::error::DecompressionProblem::*;
-use crate::helper::{ensure, Deserializer, Seeker};
+use crate::helper::{ensure, Parser, Seeker};
 use crate::Result;
 
-pub struct Header {
+struct Header {
     magic: u32,
     decompressed_size: u32,
     _reserved0: u32,
@@ -27,7 +36,7 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn deserialize<D: Deserializer>(input: &mut D) -> Result<Header> {
+    fn from_binary<D: Parser>(input: &mut D) -> Result<Header> {
         Ok(Header {
             magic: input.deserialize_bu32()?,
             decompressed_size: input.deserialize_bu32()?,
@@ -36,17 +45,19 @@ impl Header {
         })
     }
 
-    pub fn is_valid(&self) -> bool { self.magic == 0x59617A30 }
+    fn is_valid(&self) -> bool { self.magic == 0x59617A30 }
 }
 
-pub struct Yaz0Reader<D: Deserializer + Seeker> {
+/// Decompresses a Yaz0 compressed file.
+pub struct Yaz0Reader<D: Parser + Seeker> {
     reader: D,
     decompressed_size: u32,
 }
 
-impl<D: Deserializer + Seeker> Yaz0Reader<D> {
+impl<D: Parser + Seeker> Yaz0Reader<D> {
+    /// Creates a new Yaz0 reader.
     pub fn new(mut reader: D) -> Result<Yaz0Reader<D>> {
-        let header = Header::deserialize(&mut reader)?;
+        let header = Header::from_binary(&mut reader)?;
         ensure!(header.is_valid(), InvalidHeader("invalid magic"));
         Ok(Yaz0Reader {
             reader,
@@ -54,14 +65,19 @@ impl<D: Deserializer + Seeker> Yaz0Reader<D> {
         })
     }
 
+    /// Decompressed size of the data.
     pub fn decompressed_size(&self) -> u32 { self.decompressed_size }
 
+    /// Decompresses the data into a new allocated [`Vec`].
     pub fn decompress(&mut self) -> Result<Vec<u8>> {
         let mut output = vec![0; self.decompressed_size as usize];
         self.decompress_into(output.as_mut_slice())?;
         Ok(output)
     }
 
+    /// Decompresses the data into the given buffer. The buffer must be large
+    /// enough to hold the decompressed data. Use
+    /// [`Yaz0Reader::decompressed_size`] to get the size of the decompressed.
     pub fn decompress_into(&mut self, destination: &mut [u8]) -> Result<()> {
         ensure!(
             destination.len() as u32 >= self.decompressed_size,
@@ -110,10 +126,11 @@ impl<D: Deserializer + Seeker> Yaz0Reader<D> {
     }
 }
 
-pub fn is_yaz0<D: Deserializer + Seeker>(input: &mut D) -> bool {
+/// Check if the given data is compressed with Yaz0.
+pub fn is_yaz0<D: Parser + Seeker>(input: &mut D) -> bool {
     let mut check = || -> Result<bool> {
         let base = input.position()?;
-        let header = Header::deserialize(input)?;
+        let header = Header::from_binary(input)?;
         let is_compressed = header.is_valid();
         input.seek(SeekFrom::Start(base))?;
         Ok(is_compressed)

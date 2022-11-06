@@ -1,18 +1,23 @@
+//! [ASCII][`Ascii`] encoding.
+//! 
+//! [ASCII][`Ascii`] is a 7-bit encoding designed for information interchange in
+//! English. Bytes with the eighth bit set are considered invalid and will cause
+//! an [`crate::error::DecodingProblem::InvalidByte`] to be returned.
+//!
+//! # Examples
+//! TODO: Add examples
+
 use std::borrow::Borrow;
 use std::marker::PhantomData;
 
 use crate::error::DecodingProblem::*;
-use crate::helper::DeserializableStringEncoding;
 use crate::Result;
+use crate::helper::ParseStringEncoding;
 
-/// [ASCII][`Ascii`] is a 7-bit encoding designed for information interchange in
-/// English. Bytes with the eighth bit set are considered invalid and will cause
-/// an [`crate::error::DecodingProblem::InvalidByte`] to be returned.
-///
-/// # Examples
-/// TODO: Add examples
+/// [ASCII][`Ascii`] encoding.
 pub struct Ascii {}
 
+/// A iterator decoder for the [`Ascii`] encoding.
 pub struct Decoder<'x, I>
 where
     I: IntoIterator,
@@ -119,8 +124,8 @@ where
 {
 }
 
-impl DeserializableStringEncoding for Ascii {
-    fn deserialize_str<I>(iter: I) -> Result<String>
+impl ParseStringEncoding for Ascii {
+    fn parse_str<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
         I::Item: Borrow<u8> + Sized,
@@ -138,8 +143,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deserialize_str() {
+    fn parse_str() {
         let data = b"abc\0def";
-        assert_eq!(Ascii::deserialize_str(data).unwrap(), "abc".to_string());
+        assert_eq!(Ascii::parse_str(data).unwrap(), "abc".to_string());
     }
 }

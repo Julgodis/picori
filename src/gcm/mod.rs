@@ -1,5 +1,7 @@
-//! Parse GameCube Master Disc (GCM) files. GCM is a direct copy of the GameCube
-//! disc.
+//! Parse GameCube master disc (GCM) files.
+//!
+//! GCM is a direct 1-to-1 copy of the a GameCube disc. It contains the
+//! executable code, the data files, and the file system table.
 //!
 //! # Parse
 //!
@@ -21,23 +23,34 @@
 //! }
 //! ```
 
-mod apploader;
-mod bi2;
-mod boot;
-mod executable;
+pub mod apploader;
+pub mod bi2;
+pub mod boot;
+pub mod executable;
 pub mod fst;
 
 use std::io::SeekFrom;
 
+#[doc(inline)]
 pub use apploader::*;
+#[doc(inline)]
 pub use bi2::*;
+#[doc(inline)]
 pub use boot::*;
+#[doc(inline)]
 pub use executable::*;
+#[doc(inline)]
 pub use fst::Fst;
 
-use crate::helper::{ensure, Deserializer, ParseProblem, ProblemLocation, Seeker};
+use crate::helper::{ensure, ParseProblem, Parser, ProblemLocation, Seeker};
 use crate::Result;
 
+/// `.gcm` file object. Because `.gcm` files take up a lot of space, the [`Gcm`]
+/// only contains information about the boot, bi2, apploader, executable, and
+/// file string table. File specific data is not included. To get the data for a
+/// specific file, use [`Gcm::fst`] to find the file entry. Then use
+/// [`fst::Entry::File::offset`] and [`fst::Entry::File::size`] to read the file
+/// data yourself.
 pub struct Gcm {
     boot:       Boot,
     bi2:        Bi2,
@@ -47,7 +60,8 @@ pub struct Gcm {
 }
 
 impl Gcm {
-    pub fn from_binary<D: Deserializer + Seeker>(reader: &mut D) -> Result<Gcm> {
+    /// Parse GCM file from binary stream.
+    pub fn from_binary<D: Parser + Seeker>(reader: &mut D) -> Result<Gcm> {
         let position = reader.position()?;
 
         let boot = Boot::from_binary(reader)?;
@@ -74,7 +88,7 @@ impl Gcm {
         let executable = Executable::from_binary(reader)?;
 
         reader.seek(SeekFrom::Start(position + boot.fst_offset as u64))?;
-        let fst = Fst::deserialize(reader, boot.fst_size as usize)?;
+        let fst = Fst::from_binary(reader, boot.fst_size as usize)?;
 
         Ok(Gcm {
             boot,

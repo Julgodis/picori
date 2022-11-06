@@ -1,9 +1,13 @@
+//! [GCM][`crate::gcm`] File String Table (`fst.bin`). The [`Fst`] contains
+//! information about the file structure of the GameCube disc, i.e. the file
+//! names and their locations.
+
 use std::io::SeekFrom;
 use std::path::PathBuf;
 
 use crate::error::ParseProblem;
-use crate::helper::{ensure, ProblemLocation};
-use crate::{Ascii, Deserializer, Result, Seeker};
+use crate::helper::{ensure, Parser, ProblemLocation, Seeker};
+use crate::{Ascii, Result};
 
 /// Enum varient of a single [`Fst`] entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,7 +52,7 @@ enum RawEntry {
 }
 
 impl RawEntry {
-    pub fn new<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
+    pub fn new<D: Parser + Seeker>(input: &mut D) -> Result<Self> {
         let flag_or_name_offset = input.deserialize_bu32()?;
         let data_offset_or_parent = input.deserialize_bu32()?;
         let data_length_or_end = input.deserialize_bu32()?;
@@ -71,9 +75,7 @@ impl RawEntry {
     }
 }
 
-/// File String Table (`fst.bin`). The [`Fst`] contains information about the
-/// file structure of the GameCube disc, i.e. the file names and their
-/// locations.
+/// [GCM][`crate::gcm`] File String Table (`fst.bin`) object.
 pub struct Fst {
     entries: Vec<Entry>,
 }
@@ -82,8 +84,8 @@ impl Fst {
     /// Parse GCM FST.
     ///
     /// To read the full string table, this function needs the size of the
-    /// [`Fst`]. This is available in the [`Boot`] struct.
-    pub fn deserialize<D: Deserializer + Seeker>(reader: &mut D, fst_size: usize) -> Result<Fst> {
+    /// [`Fst`]. This is available in the [`crate::gcm::Boot`] struct.
+    pub fn from_binary<D: Parser + Seeker>(reader: &mut D, fst_size: usize) -> Result<Fst> {
         let base = reader.position()?;
 
         let _ = reader.deserialize_bu32()?;
@@ -135,7 +137,7 @@ impl Fst {
         Ok(Fst { entries })
     }
 
-    /// Get an iterator over all [`FstEntry`]s.
+    /// Get an iterator over all [`Entry`]s.
     pub fn files(&self) -> FileIterator {
         FileIterator {
             fst: self,
@@ -146,7 +148,7 @@ impl Fst {
     }
 }
 
-/// Iterator over all files in a [`Fst`].
+/// Iterator over all [`Entry`]s in [`Fst`].
 pub struct FileIterator<'fst> {
     fst: &'fst Fst,
     index: usize,

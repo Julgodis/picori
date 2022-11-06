@@ -1,11 +1,12 @@
+use std::borrow::Borrow;
 use std::panic::Location;
 
 use super::endian::{BigEndian, EndianAgnostic, LittleEndian, NativeEndian};
-use super::{DeserializableStringEncoding, Reader};
+use super::Reader;
 use crate::Result;
 
 /// A helper trait for types that can interpret bytes.
-pub trait Deserializer: Reader {
+pub trait Parser: Reader {
     /// Read a single u8.
     #[track_caller]
     #[inline]
@@ -74,12 +75,10 @@ pub trait Deserializer: Reader {
     /// Read string with the given encoding until the NUL character is
     /// encountered or `L` bytes have been read.
     #[track_caller]
-    fn deserialize_str<const L: usize, E: DeserializableStringEncoding>(
-        &mut self,
-    ) -> Result<String> {
+    fn deserialize_str<const L: usize, E: ParseStringEncoding>(&mut self) -> Result<String> {
         let mut buffer = [0u8; L];
         self.read_into_tracked(&mut buffer, Location::caller())?;
-        E::deserialize_str(buffer)
+        E::parse_str(buffer)
     }
 
     /// Read array of u8 with the given length `L`.
@@ -144,8 +143,15 @@ pub trait Deserializer: Reader {
     }
 }
 
-/// Implementation of [`Deserializer`] for all [`Reader`].
-impl<Base: Reader> Deserializer for Base {}
+/// Implementation of [`Parser`] for all [`Reader`].
+impl<Base: Reader> Parser for Base {}
+
+pub trait ParseStringEncoding {
+    fn parse_str<I>(data: I) -> Result<String>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<u8> + Sized;
+}
 
 // -------------------------------------------------------------------------------
 // Tests

@@ -41,3 +41,15 @@ name = "rel"
 path = "fuzz_targets/rel.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "gcm_boot"
+path = "fuzz_targets/gcm_boot.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "gcm_bi2"
+path = "fuzz_targets/gcm_bi2.rs"
+test = false
+doc = false

@@ -1,8 +1,11 @@
-use crate::{Ascii, Deserializer, Result};
+//! [GCM][`crate::gcm`] Apploader (`apploader.img`). The boot stages loads the
+//! apploader code, The apploader is a small program that loads the main
+//! executable and the [FST][`crate::gcm::fst`].
 
-/// GCM Apploader (`apploader.img`). The boot stages loads the apploader code,
-/// The apploader is a small program that loads the main executable and the
-/// FST.
+use crate::helper::Parser;
+use crate::{Ascii, Result};
+
+/// [GCM][`crate::gcm`] Apploader (`apploader.img`) object.
 #[derive(Debug, Default)]
 pub struct Apploader {
     /// Date.
@@ -26,7 +29,7 @@ pub struct Apploader {
 
 impl Apploader {
     /// Parse GCM Apploader.
-    pub fn from_binary<D: Deserializer>(input: &mut D) -> Result<Self> {
+    pub fn from_binary<D: Parser>(input: &mut D) -> Result<Self> {
         let date = input.deserialize_str::<0x10, Ascii>()?;
         let entry_point = input.deserialize_bu32()?;
         let size = input.deserialize_bu32()?;
