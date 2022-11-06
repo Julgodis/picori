@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use colored::{Color, ColoredString, Colorize};
-use picori::file::{self, gcm};
+use colored::{ColoredString, Colorize};
+use picori::file::gcm;
 
 extern crate picori;
 
@@ -18,38 +18,44 @@ extern crate picori;
 struct Args {
     /// Path to the file to dump
     #[arg()]
-    path:      PathBuf,
+    path: PathBuf,
     /// Dump boot.bin
     #[arg(long)]
-    boot:      bool,
+    boot: bool,
     /// Dump bi2.bin
     #[arg(short = 'd', short, long)]
-    bi2:       bool,
+    bi2: bool,
     /// Dump apploader.img
     #[arg(short = 'l', long)]
     apploader: bool,
     /// Dump main.dol
     #[arg(short = 'e', long)]
-    dol:       bool,
+    dol: bool,
     /// Dump fst.bin
     #[arg(short, long)]
-    fst:       bool,
+    fst: bool,
     /// Dump data
     #[arg(short, long)]
-    data:      bool,
+    data: bool,
     /// Dump all
     #[arg(short, long)]
-    all:       bool,
+    all: bool,
     /// Column width
     #[arg(short, long, default_value = "32")]
-    width:     usize,
+    width: usize,
 }
 
-fn hex2(value: u8) -> ColoredString { format!("{:#04x}", value).cyan() }
+fn hex2(value: u8) -> ColoredString {
+    format!("{:#04x}", value).cyan()
+}
 
-fn hex8(value: u32) -> ColoredString { format!("{:#010x}", value).cyan() }
+fn hex8(value: u32) -> ColoredString {
+    format!("{:#010x}", value).cyan()
+}
 
-fn num(value: u32) -> ColoredString { format!("{}", value).cyan() }
+fn num(value: u32) -> ColoredString {
+    format!("{}", value).cyan()
+}
 
 fn output_boot(boot: &gcm::Boot) {
     println!("boot.bin:");
