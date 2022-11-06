@@ -1,3 +1,11 @@
 /target/
 
 Cargo.lock
+
+# gzle01.dol is property of Nintendo, and must be 
+# scrubed clean of any code and data related to the game 
+# before being added to the repository.
+gzle01.dol
+*.dol
+*.iso
+*.gcm

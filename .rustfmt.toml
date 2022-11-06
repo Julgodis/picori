@@ -1,0 +1,18 @@
+#
+# https://github.com/rust-lang/rustfmt/blob/master/Configurations.md
+#
+
+error_on_line_overflow=true
+error_on_unformatted=true
+fn_single_line=true
+format_code_in_doc_comments=true
+format_strings=true
+indent_style="Block"
+match_block_trailing_comma=true
+imports_granularity="Module"
+normalize_comments=true
+normalize_doc_attributes=true
+overflow_delimited_expr=true
+group_imports="StdExternalCrate"
+struct_field_align_threshold=10
+wrap_comments=true
