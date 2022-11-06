@@ -32,6 +32,15 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           override: true
           components: llvm-tools-preview
+      - name: fetch git
+        env: 
+          CI_COMMIT_AUTHOR: CI
+        if: github.event_name == 'push'
+        run: |
+          git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
+          git config --global user.email "username@users.noreply.github.com"
+          git fetch
+          git checkout coverage --
       - name: grcov
         run: curl -L https://github.com/mozilla/grcov/releases/latest/download/grcov-x86_64-unknown-linux-gnu.tar.bz2 | tar jxf -
       - name: coverage
@@ -44,17 +53,11 @@ jobs:
           cargo build --verbose
           cargo test --verbose
           ./grcov . --binary-path ./target/debug/ -s . -t html --llvm --branch --ignore-not-existing --ignore "/*" -o ./coverage/
-
       - name: upload coverage
         env: 
           CI_COMMIT_MESSAGE: CI Coverage Report
-          CI_COMMIT_AUTHOR: CI
         if: github.event_name == 'push'
         run: |
-          git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
-          git config --global user.email "username@users.noreply.github.com"
-          git fetch
-          git checkout coverage --
           git add coverage
           git commit -m "${{ env.CI_COMMIT_MESSAGE }}"
           git push
