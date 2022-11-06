@@ -31,7 +31,8 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           override: true
-          components: llvm-tools-preview, grcov
+          components: llvm-tools-preview
+        run: curl -L https://github.com/mozilla/grcov/releases/latest/download/grcov-x86_64-unknown-linux-gnu.tar.bz2 | tar jxf -
       - name: coverage
         env:
           RUSTFLAGS: '-Cinstrument-coverage'
