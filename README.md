@@ -71,7 +71,7 @@ Picori is available on [crates.io](https://crates.io/crates/picori). Add the fol
 
 ```toml
 [dependencies]
-picori = "0.1"
+picori = "0.1.0"
 ```
 
 ## Contributing
