@@ -94,7 +94,7 @@ impl StringReadSupport for Ascii {
 #[cfg(test)]
 mod tests {
     use crate::helper::read_extension::StringReadSupport;
-    use crate::string::ascii::{Ascii, AsciiIterator};
+    use super::*;
 
     #[test]
     fn ok() {
