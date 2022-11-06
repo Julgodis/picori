@@ -20,15 +20,15 @@
 Picori is a library to support modding and decompilation tools for GameCube and Wii games. It includes support to serialize and deserialize many development and game formats, common compression algorithms, string encodings, and the ability to demangle C++ symbols.
 
 [Features](#features) •
+[Usage](#usage) •
 [Examples](#examples) •
 [Installation](#installation)
 
 ```diff
-!!! It is currently in a very early stage of development. !!!
+!!! The project is currently very early stages of development. Features may be unimplemented and compatibility between versions before 1.0.0 is not guaranteed. !!!
 ```
 
 </div>
-
 
 ## Features
 
@@ -39,6 +39,10 @@ Picori is a library to support modding and decompilation tools for GameCube and 
 -   Yaz0
 -   JIS X 0201
 -   Shift JIS (1997 and 2004)
+
+## Usage
+
+**TODO: Add usage**
 
 ## Examples
 
