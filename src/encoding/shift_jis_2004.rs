@@ -1,49 +1,39 @@
-//! Shift JIS (Shift Japanese Industrial Standards) is an character encoding for
-//! the Japanese language. It is built on the `JIS X 0201:1997` character set,
-//! which is a single byte character encoding. The blank parts of `JIS X
-//! 0201:1997` are used to encoded the `JIS X 0208:1997` (basic kanji) character
-//! set, which is a double byte character encoding, .i.e, the first byte is
-//! `0x81-0x9F` or `0xE0-0xEF`, and the second byte is `0x40-0x7E` or
-//! `0x80-0xFC`. There are unallocated values in the first-byte range:
-//! `0x85-0x87` and `0xEB-0xEF`. Similar the second byte has unallocated space,
-//! only `94x2` characters can be used.
-//!
-//! There are multiple versions of Shift JIS. The two most common are the
-//! `Shift JIS:1997` and `Shift JIS:2004`. `Shift JIS:1997` is the original
-//! version using `JIS X 0208:1997`. `Shift JIS:2004` is the newer version,
-//! which is using the new `JIS X 0213:2004` (extended kanji) character set.
-//! `JIS X 0213:2004` is an extension of `JIS X 0208` with more supported kanji.
-//! `Shift JIS:2004` is extended by using unallocated values in of first-byte,
-//! .i.e, `0x85-0x87` and `0xEB-0xEF` are used and the first-byte range is
-//! extended with `0xF0-0xFC`. `JIS X 0213:2004` includes characters that
-//! Unicode can not present with a single code point. These characters are
-//! encoded as a pair of code points.
-//!
-//! # Shift JIS vs JIS X 0208
-//! Although `Shift JIS` uses `JIS X 0208`, they are not easily interchangeable.
-//! A double-byte encoded character in `Shift JIS` is not equal to a double-byte
-//! encoded character in `JIS X 0208`.
-//!
-//! # References
-//! It has been hard to find a good reference for `Shift JIS`. The following are
-//! the best references I have found:
-//!
-//! - [Shift JIS](https://en.wikipedia.org/wiki/Shift_JIS)
-//! - [JIS X 0201](https://en.wikipedia.org/wiki/JIS_X_0201)
-//! - [JIS X 0208](https://en.wikipedia.org/wiki/JIS_X_0208)
-//! - [JIS X 0213](https://en.wikipedia.org/wiki/JIS_X_0213)
-//! - [日本の文字コード](http://www.asahi-net.or.jp/~ax2s-kmtn/character/japan.html)
-//! - [JIS基本漢字](http://www.asahi-net.or.jp/~ax2s-kmtn/ref/jisx0208.html)
-//! - [JIS拡張漢字](http://www.asahi-net.or.jp/~ax2s-kmtn/ref/jisx0213/index.html)
-//! - [Shift JIS Kanji Table](http://www.rikai.com/library/kanjitables/kanji_codes.sjis.shtml)
-
 use std::borrow::Borrow;
 use std::marker::PhantomData;
 
+use crate::encoding::jis_x_0201::Decoder as JisX0201Decoder;
 use crate::error::DecodingProblem::*;
-use crate::helper::{DeserializableStringEncoding, ensure};
-use crate::string::jis_x_0201::JisX0201Decoder;
+use crate::helper::{ensure, DeserializableStringEncoding};
 use crate::Result;
+
+/// This module provides functionality to encode and decode text in the [Shift
+/// JIS][`ShiftJis2004`] (Shift Japanese Industrial Standards) version `2004`.
+///
+/// [Shift JIS 2004][`ShiftJis2004`] is an updated version of [Shift JIS
+/// 1997][`crate::encoding::ShiftJis1997`]. It includes the uses
+/// of `JIS X 0213-2000` and `JIS X 0213-2004`. The major differences is that
+/// [Shift JIS 2004][`ShiftJis2004`] has more lead-byte that are available and
+/// new characters introduced.
+///
+/// For information on how [Shift JIS][`ShiftJis2004`] encoding works see [Shift
+/// JIS 1997][`crate::encoding::ShiftJis1997`] and the references that are
+/// linked below.
+///
+/// # Examples
+/// TODO: Add examples
+///
+/// # References
+/// Finding references that were still available was incrdible difficult. Both
+/// for [Shift JIS][`ShiftJis2004`] encoding and the related ones.
+///
+/// - [Shift JIS](https://en.wikipedia.org/wiki/Shift_JIS)
+/// - [JIS X 0201](https://en.wikipedia.org/wiki/JIS_X_0201)
+/// - [JIS X 0213](https://en.wikipedia.org/wiki/JIS_X_0213)
+/// - [日本の文字コード](http://www.asahi-net.or.jp/~ax2s-kmtn/character/japan.html)
+/// - [JIS拡張漢字](http://www.asahi-net.or.jp/~ax2s-kmtn/ref/jisx0213/index.html)
+/// - [JIS X 0213 Code Mapping Tables](http://x0213.org/codetable/index.en.html)
+/// - [Shift JIS Kanji Table](http://www.rikai.com/library/kanjitables/kanji_codes.sjis.shtml)
+pub struct ShiftJis2004 {}
 
 mod internal {
     include!(concat!(env!("OUT_DIR"), "/shift_jis_2004.rs"));
@@ -89,7 +79,7 @@ where
             match byte {
                 // First byte of a double-byte JIS X 0208 or JIS X 0213 character
                 0x81..=0x9F | 0xE0..=0xFC => {
-                    let next = iter.next().ok_or(UnexpectedEndOfInput)?;
+                    let next = iter.next().ok_or(UnexpectedEndOfData)?;
                     let next = *next.borrow();
                     let (first, last, offset) = internal::SJIS_2004_UTF8_T[byte as usize];
                     ensure!(next >= first && next <= last, InvalidByte(next));
@@ -142,9 +132,9 @@ where
     }
 }
 
-pub struct ShiftJis2004 {}
-
 impl ShiftJis2004 {
+    /// Create an iterator that decodes the given iterator of bytes into
+    /// characters.
     pub fn iter<'iter, I>(iter: I) -> Decoder<'iter, I>
     where
         I: IntoIterator,
@@ -153,6 +143,8 @@ impl ShiftJis2004 {
         Decoder::new(iter)
     }
 
+    /// Decode all bytes into a string. Will continue passed NULL bytes and only
+    /// stop at the end of the iterator or if an decoding error occurs.
     pub fn all<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
@@ -161,6 +153,8 @@ impl ShiftJis2004 {
         Self::iter(iter).collect()
     }
 
+    /// Decode the first string (until a NULL character is reached) from the
+    /// given iterator.
     pub fn first<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
@@ -175,11 +169,15 @@ impl ShiftJis2004 {
     }
 }
 
+/// Extension trait for iterators of bytes and adds the helper function
+/// [`IteratorExt::sjis2004`] for decoding as [Shift JIS 2004][`ShiftJis2004`]
+/// strings.
 pub trait IteratorExt
 where
     Self: IntoIterator + Sized,
     Self::Item: Borrow<u8> + Sized,
 {
+    /// Decode self iterator of bytes as [Shift JIS 2004][`ShiftJis2004`].
     fn sjis2004<'b>(self) -> Decoder<'b, Self> { Decoder::new(self) }
 }
 

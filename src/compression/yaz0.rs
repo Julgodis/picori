@@ -10,7 +10,7 @@
 //!
 //! ## References
 //!
-//! [Yaz0](<http://www.amnoid.de/gc/yaz0.txt) - Implementation of the decompression algorithm is based
+//! [Yaz0](http://www.amnoid.de/gc/yaz0.txt) - Implementation of the decompression algorithm is based
 //! on specification and format description by Amnoid.
 
 use std::io::SeekFrom;
@@ -72,7 +72,7 @@ pub fn decompress_to_buffer(dest: &mut [u8], source: &[u8]) -> Result<()> {
     let mut j = 0;
 
     loop {
-        ensure!(i < source.len(), UnexpectedEndOfInput);
+        ensure!(i < source.len(), UnexpectedEndOfData);
         let code = source[i];
         i += 1;
 
@@ -82,12 +82,12 @@ pub fn decompress_to_buffer(dest: &mut [u8], source: &[u8]) -> Result<()> {
             }
 
             if (code & (0x80 >> k)) != 0 {
-                ensure!(i < source.len(), UnexpectedEndOfInput);
+                ensure!(i < source.len(), UnexpectedEndOfData);
                 dest[j] = source[i];
                 i += 1;
                 j += 1;
             } else {
-                ensure!(i + 1 < source.len(), UnexpectedEndOfInput);
+                ensure!(i + 1 < source.len(), UnexpectedEndOfData);
                 let byte0 = source[i] as usize;
                 let byte1 = source[i + 1] as usize;
                 i += 2;
@@ -97,7 +97,7 @@ pub fn decompress_to_buffer(dest: &mut [u8], source: &[u8]) -> Result<()> {
 
                 let mut length = a;
                 if length == 0 {
-                    ensure!(i < source.len(), UnexpectedEndOfInput);
+                    ensure!(i < source.len(), UnexpectedEndOfData);
                     length = source[i] as usize + 0x12;
                     i += 1;
                 } else {
@@ -105,8 +105,8 @@ pub fn decompress_to_buffer(dest: &mut [u8], source: &[u8]) -> Result<()> {
                 }
 
                 let offset = ((b << 8) | byte1) + 1;
-                ensure!(offset >= j, UnexpectedEndOfInput);
-                ensure!(j - offset + length < dest.len(), UnexpectedEndOfInput);
+                ensure!(offset >= j, UnexpectedEndOfData);
+                ensure!(j - offset + length < dest.len(), UnexpectedEndOfData);
                 for _ in 0..length {
                     dest[j] = dest[j - offset];
                     j += 1;

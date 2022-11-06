@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use picori::string::{JisX0201, JisX0201IteratorExt};
+    use picori::encoding::{JisX0201, JisX0201IteratorExt};
 
     #[test]
     fn ascii() {

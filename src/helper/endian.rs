@@ -64,16 +64,21 @@ impl EndianAgnostic for BigEndian {
 mod tests {
     use super::*;
 
-
     #[test]
     fn big_endian() {
         assert_eq!(BigEndian::u16_from_bytes(&[0x01, 0x02]), 0x0102);
-        assert_eq!(BigEndian::u32_from_bytes(&[0x01, 0x02, 0x03, 0x04]), 0x01020304);
+        assert_eq!(
+            BigEndian::u32_from_bytes(&[0x01, 0x02, 0x03, 0x04]),
+            0x01020304
+        );
     }
 
     #[test]
     fn little_endian() {
         assert_eq!(LittleEndian::u16_from_bytes(&[0x01, 0x02]), 0x0201);
-        assert_eq!(LittleEndian::u32_from_bytes(&[0x01, 0x02, 0x03, 0x04]), 0x04030201);
+        assert_eq!(
+            LittleEndian::u32_from_bytes(&[0x01, 0x02, 0x03, 0x04]),
+            0x04030201
+        );
     }
 }

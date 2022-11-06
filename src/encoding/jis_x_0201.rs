@@ -5,7 +5,23 @@ use crate::error::DecodingProblem::*;
 use crate::helper::DeserializableStringEncoding;
 use crate::Result;
 
-pub struct AsciiDecoder<'x, I>
+/// [JIS X 0201][`JisX0201`] (ANK) is a single-byte encoding specified by JIS
+/// (Japanese Industrial Standards) and is built upon the 7-bit
+/// [ASCII][`crate::encoding::Ascii`] encoding. The first 7-bit are untouched
+/// except for two characters. The [ASCII][`crate::encoding::Ascii`] character
+/// `0x5C` (Reverse Solidus) replaced by the Unicode character 'U+00A5' (Yen
+/// Sign) and the [ASCII][`crate::encoding::Ascii`] character `0x7E` (Tilde)
+/// replaced by the Unicode character `U+203E` (Overline). The eighth bit
+/// provide space for the phonetic Japanese katakana signs in half-width style.
+///
+/// [JIS X 0201][`JisX0201`] is encoding that [Shift
+/// JIS][`crate::encoding::ShiftJis1997`] is based upon.
+///
+/// # Examples
+/// TODO: Add examples
+pub struct JisX0201 {}
+
+pub struct Decoder<'x, I>
 where
     I: IntoIterator,
     I::Item: Borrow<u8> + Sized,
@@ -14,29 +30,36 @@ where
     _marker: PhantomData<&'x ()>,
 }
 
-impl<I> AsciiDecoder<'_, I>
+impl<I> Decoder<'_, I>
 where
     I: IntoIterator,
     I::Item: Borrow<u8> + Sized,
 {
-    fn new<'x>(iter: I) -> AsciiDecoder<'x, I> {
-        AsciiDecoder {
+    fn new<'x>(iter: I) -> Decoder<'x, I> {
+        Decoder {
             iter:    iter.into_iter(),
             _marker: PhantomData,
         }
     }
 
-    fn decode_byte(byte: u8) -> Option<char> {
+    pub fn decode_byte(byte: u8) -> Option<char> {
         match byte {
-            // ASCII character
+            // Modified ASCII character
+            0x5c => Some('\u{00a5}'),
+            0x7e => Some('\u{203e}'),
+            // Unaltered ASCII character
             0x00..=0x7f => Some(byte as char),
-            // Invalid
+            // Single-byte half-width katakana
+            0xa1..=0xdf => {
+                let unicode = 0xFF61 + (byte - 0xa1) as u32;
+                char::from_u32(unicode)
+            },
             _ => None,
         }
     }
 }
 
-impl<I> Iterator for AsciiDecoder<'_, I>
+impl<I> Iterator for Decoder<'_, I>
 where
     I: IntoIterator,
     I::Item: Borrow<u8> + Sized,
@@ -56,17 +79,19 @@ where
     }
 }
 
-pub struct Ascii {}
-
-impl Ascii {
-    pub fn iter<'iter, I>(iter: I) -> AsciiDecoder<'iter, I>
+impl JisX0201 {
+    /// Create an iterator that decodes the given iterator of bytes into
+    /// characters.
+    pub fn iter<'iter, I>(iter: I) -> Decoder<'iter, I>
     where
         I: IntoIterator,
         I::Item: Borrow<u8> + Sized,
     {
-        AsciiDecoder::new(iter)
+        Decoder::new(iter)
     }
 
+    /// Decode all bytes into a string. Will continue passed NULL bytes and only
+    /// stop at the end of the iterator or if an decoding error occurs.
     pub fn all<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
@@ -75,6 +100,8 @@ impl Ascii {
         Self::iter(iter).collect()
     }
 
+    /// Decode the first string (until a NULL character is reached) from the
+    /// given iterator.
     pub fn first<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
@@ -89,12 +116,15 @@ impl Ascii {
     }
 }
 
+/// Extension trait for iterators of bytes and adds the helper function
+/// [`IteratorExt::jisx0201`] for decoding as [JIS X 0201][`JisX0201`] strings.
 pub trait IteratorExt
 where
     Self: IntoIterator + Sized,
     Self::Item: Borrow<u8> + Sized,
 {
-    fn ascii<'b>(self) -> AsciiDecoder<'b, Self> { AsciiDecoder::new(self) }
+    /// Decode self iterator of bytes as [JIS X 0201][`JisX0201`].
+    fn jisx0201<'b>(self) -> Decoder<'b, Self> { Decoder::new(self) }
 }
 
 impl<I> IteratorExt for I
@@ -104,7 +134,7 @@ where
 {
 }
 
-impl DeserializableStringEncoding for Ascii {
+impl DeserializableStringEncoding for JisX0201 {
     fn deserialize_str<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
@@ -125,6 +155,6 @@ mod tests {
     #[test]
     fn deserialize_str() {
         let data = b"abc\0def";
-        assert_eq!(Ascii::deserialize_str(data).unwrap(), "abc".to_string());
+        assert_eq!(JisX0201::deserialize_str(data).unwrap(), "abc".to_string());
     }
 }

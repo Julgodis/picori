@@ -1,39 +1,78 @@
 use std::collections::HashMap;
 use std::io::{SeekFrom, Write};
 
+use crate::encoding::Ascii;
 use crate::error::DeserializeProblem::*;
 use crate::helper::{ensure, Deserializer, Seeker};
-use crate::string::Ascii;
 use crate::Result;
 
+/// GCM Boot Header (`boot.bin`). This is the first 0x440 bytes of the GCM
+/// image.
 #[derive(Debug, Default)]
 pub struct Boot {
-    pub console_id: u8,              // 0x000 0x001
-    pub game_code: [u8; 2],          // 0x002 0x002
-    pub country_code: u8,            // 0x003 0x001
-    pub maker_code: [u8; 2],         // 0x004 0x002
-    pub disc_id: u8,                 // 0x006 0x001
-    pub version: u8,                 // 0x007 0x001
-    pub audio_streaming: u8,         // 0x008 0x001
-    pub streaming_buffer_size: u8,   // 0x009 0x001
-    pub reserved0: [u8; 0x12],       // 0x00A 0x012
-    pub magic: u32,                  // 0x01C 0x004
-    pub game_name: String,           // 0x020 0x3E0
-    pub debug_monitor_offset: u32,   // 0x400 0x004
-    pub debug_monitor_address: u32,  // 0x404 0x004
-    pub reserved1: [u8; 0x18],       // 0x408 0x018
-    pub main_executable_offset: u32, // 0x420 0x004
-    pub fst_offset: u32,             // 0x424 0x004
-    pub fst_size: u32,               // 0x428 0x004
-    pub fst_max_size: u32,           // 0x42C 0x004
-    pub user_position: u32,          // 0x430 0x004
-    pub user_length: u32,            // 0x434 0x004
-    pub unknown: u32,                // 0x438 0x004
-    pub reserved2: [u8; 0x4],        // 0x43C 0x004
+    /// Console id.
+    pub console_id: u8,
+
+    /// Game code.
+    pub game_code: [u8; 2],
+
+    /// Region code.
+    pub country_code: u8,
+
+    /// Maker code.
+    pub maker_code: [u8; 2],
+
+    /// Disc number.
+    pub disc_id: u8,
+
+    /// Version.
+    pub version: u8,
+
+    /// Audio streaming.
+    pub audio_streaming: u8,
+
+    /// Stream buffer size.
+    pub streaming_buffer_size: u8,
+
+    /// Disc magic (0xC2339F3D).
+    pub magic: u32, // 0x01C 0x004
+
+    /// Game name.
+    pub game_name: String, // 0x020 0x3E0
+
+    /// Debug monitor offset (unknown purpose).
+    pub debug_monitor_offset: u32,
+
+    /// Debug monitor address (unknown purpose).
+    pub debug_monitor_address: u32,
+
+    /// Main executable offset from the start of the file.
+    pub main_executable_offset: u32,
+
+    /// FST offset from the start of the file.
+    pub fst_offset: u32,
+
+    /// FST size for this disc.
+    pub fst_size: u32,
+
+    /// FST max size. FST is shared between all discs and this is
+    /// the total size of the FST when all discs are combined.
+    pub fst_max_size: u32,
+
+    /// User position (unknown purpose).
+    pub user_position: u32,
+
+    /// User length (unknown purpose).
+    pub user_length: u32,
+
+    /// Unknown0 (unknown purpose).
+    pub unknown0: u32,
 }
 
 impl Boot {
-    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
+    /// Deserialize a GCM Boot from a
+    /// [Deserializer][`crate::helper::Deserializer`].
+    pub fn deserialize<D: Deserializer>(input: &mut D) -> Result<Self> {
         let console_id = input.deserialize_u8()?;
         let game_code = input.deserialize_u8_array::<2>()?;
         let country_code = input.deserialize_u8()?;
@@ -42,20 +81,20 @@ impl Boot {
         let version = input.deserialize_u8()?;
         let audio_streaming = input.deserialize_u8()?;
         let streaming_buffer_size = input.deserialize_u8()?;
-        let reserved0 = input.deserialize_u8_array::<0x12>()?;
+        let _reserved0 = input.deserialize_u8_array::<0x12>()?;
         let magic = input.deserialize_bu32()?;
         let game_name = input.deserialize_str::<0x3E0, Ascii>()?;
         let debug_monitor_offset = input.deserialize_bu32()?;
         let debug_monitor_address = input.deserialize_bu32()?;
-        let reserved1 = input.deserialize_u8_array::<0x18>()?;
+        let _reserved1 = input.deserialize_u8_array::<0x18>()?;
         let main_executable_offset = input.deserialize_bu32()?;
         let fst_offset = input.deserialize_bu32()?;
         let fst_size = input.deserialize_bu32()?;
         let fst_max_size = input.deserialize_bu32()?;
         let user_position = input.deserialize_bu32()?;
         let user_length = input.deserialize_bu32()?;
-        let unknown = input.deserialize_bu32()?;
-        let reserved2 = input.deserialize_u8_array::<0x4>()?;
+        let unknown0 = input.deserialize_bu32()?;
+        let _reserved2 = input.deserialize_u8_array::<0x4>()?;
 
         Ok(Self {
             console_id,
@@ -66,147 +105,176 @@ impl Boot {
             version,
             audio_streaming,
             streaming_buffer_size,
-            reserved0,
             magic,
             game_name,
             debug_monitor_offset,
             debug_monitor_address,
-            reserved1,
             main_executable_offset,
             fst_offset,
             fst_size,
             fst_max_size,
             user_position,
             user_length,
-            unknown,
-            reserved2,
+            unknown0,
         })
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
-pub enum Bi2Index {
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, PartialOrd, Ord)]
+pub enum Bi2Options {
+    /// Debug monitor size  (unknown purpose).
     DebugMonitorSize,
+
+    /// Simulated memory size (unknown purpose).
     SimulatedMemorySize,
+
+    /// Argument offset (unknown purpose).
     ArgumentOffset,
+
+    /// Debug flag. This indicates whether the game is running in debug mode.
     DebugFlag,
+
+    /// Track location (unknown purpose).
     TrackLocation,
+
+    /// Track size (unknown purpose).
     TrackSize,
+
+    /// Country code (unknown purpose, this already exists in `boot.bin`).
     CountryCode,
+
+    /// Initial PAD_SPEC_X that the Pad library uses.
     PadSpec,
+
+    /// Long filename support (unknown purpose).
     LongFilenameSupport,
+
+    /// Dol limit (unknown purpose).
     DolLimit,
+
+    /// Other unknown options.
     Unknown(usize),
 }
 
-impl Bi2Index {
+impl Bi2Options {
+    /// Get the index of a options.
     pub fn index(&self) -> usize {
+        use Bi2Options::*;
         match self {
-            Bi2Index::DebugMonitorSize => 1,
-            Bi2Index::SimulatedMemorySize => 2,
-            Bi2Index::ArgumentOffset => 3,
-            Bi2Index::DebugFlag => 4,
-            Bi2Index::TrackLocation => 5,
-            Bi2Index::TrackSize => 6,
-            Bi2Index::CountryCode => 7,
-            Bi2Index::PadSpec => 8,
-            Bi2Index::LongFilenameSupport => 9,
-            Bi2Index::DolLimit => 11,
-            Bi2Index::Unknown(index) => *index,
+            DebugMonitorSize => 1,
+            SimulatedMemorySize => 2,
+            ArgumentOffset => 3,
+            DebugFlag => 4,
+            TrackLocation => 5,
+            TrackSize => 6,
+            CountryCode => 7,
+            PadSpec => 8,
+            LongFilenameSupport => 9,
+            DolLimit => 11,
+            Unknown(index) => *index,
         }
     }
 }
 
-impl From<usize> for Bi2Index {
+impl From<usize> for Bi2Options {
     fn from(index: usize) -> Self {
+        use Bi2Options::*;
         match index {
-            1 => Bi2Index::DebugMonitorSize,
-            2 => Bi2Index::SimulatedMemorySize,
-            3 => Bi2Index::ArgumentOffset,
-            4 => Bi2Index::DebugFlag,
-            5 => Bi2Index::TrackLocation,
-            6 => Bi2Index::TrackSize,
-            7 => Bi2Index::CountryCode,
-            8 => Bi2Index::PadSpec,
-            9 => Bi2Index::LongFilenameSupport,
-            11 => Bi2Index::DolLimit,
-            _ => Bi2Index::Unknown(index),
+            1 => DebugMonitorSize,
+            2 => SimulatedMemorySize,
+            3 => ArgumentOffset,
+            4 => DebugFlag,
+            5 => TrackLocation,
+            6 => TrackSize,
+            7 => CountryCode,
+            8 => PadSpec,
+            9 => LongFilenameSupport,
+            11 => DolLimit,
+            _ => Unknown(index),
         }
     }
 }
 
+/// GCM Boot information (`bi2.bin`). Directly follows the boot header and is
+/// always 0x2000 bytes. It seems to contain information about optionss that are
+/// passed to the Boot Stage and Apploader[^note-bi2].
+///
+/// [^note-bi2]: This implementation assume that there is 0x800 individual optionss that
+/// can be set to any value. This is not necessarily true, the structure of this
+/// file is  not well understood. Only the first 0x28 bytes are known to be
+/// used.
 #[derive(Debug, Default)]
 pub struct Bi2 {
-    pub values: HashMap<Bi2Index, u32>,
+    options: HashMap<Bi2Options, u32>,
 }
 
 impl Bi2 {
-    pub fn new() -> Self {
-        Self {
-            values: HashMap::new(),
-        }
-    }
+    /// Get options value.
+    pub fn get(&self, options: Bi2Options) -> Option<&u32> { self.options.get(&options) }
 
-    pub fn get(&self, index: Bi2Index) -> Option<&u32> { self.values.get(&index) }
-    pub fn set(&mut self, index: Bi2Index, value: u32) { self.values.insert(index, value); }
-    pub fn clear(&mut self, index: Bi2Index) { self.values.remove(&index); }
+    /// Set options value.
+    pub fn set(&mut self, options: Bi2Options, value: u32) { self.options.insert(options, value); }
 
-    pub fn debug_monitor_size(&self) -> Option<&u32> { self.get(Bi2Index::DebugMonitorSize) }
-    pub fn simulated_memory_size(&self) -> Option<&u32> { self.debug_monitor_size() }
-    pub fn argument_offset(&self) -> Option<&u32> { self.get(Bi2Index::ArgumentOffset) }
-    pub fn debug_flag(&self) -> Option<&u32> { self.get(Bi2Index::DebugFlag) }
-    pub fn track_location(&self) -> Option<&u32> { self.get(Bi2Index::TrackLocation) }
-    pub fn track_size(&self) -> Option<&u32> { self.get(Bi2Index::TrackSize) }
-    pub fn country_code(&self) -> Option<&u32> { self.get(Bi2Index::CountryCode) }
-    pub fn pad_spec(&self) -> Option<&u32> { self.get(Bi2Index::PadSpec) }
-    pub fn long_filename_support(&self) -> Option<&u32> { self.get(Bi2Index::LongFilenameSupport) }
-    pub fn dol_limit(&self) -> Option<&u32> { self.get(Bi2Index::DolLimit) }
+    /// Clear options value.
+    pub fn clear(&mut self, options: Bi2Options) { self.options.remove(&options); }
+
+    pub fn options(&self) -> &HashMap<Bi2Options, u32> { &self.options }
 }
 
 impl Bi2 {
-    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
-        let values = input
+    /// Deserialize a GCM Bi2 from a
+    /// [Deserializer][`crate::helper::Deserializer`].
+    pub fn deserialize<D: Deserializer>(input: &mut D) -> Result<Self> {
+        let options = input
             .deserialize_bu32_array::<{ 0x2000 / 4 }>()?
             .iter()
             .enumerate()
-            .map(|(i, data)| (Bi2Index::from(i), *data))
+            .map(|(i, data)| (Bi2Options::from(i), *data))
             .filter(|x| x.1 != 0)
             .collect::<HashMap<_, _>>();
 
-        Ok(Self { values })
+        Ok(Self { options })
     }
 }
 
+/// GCM Apploader (`apploader.img`). The boot stages loads the Apploader.
+///  It is a small program that loads the main executable and the FST.
 #[derive(Debug, Default)]
 pub struct Apploader {
-    pub date:         String,
-    pub entrypoint:   u32,
-    pub size:         u32,
+    /// Date.
+    pub date: String,
+
+    /// Apploader entry point.
+    pub entry_point: u32,
+
+    /// Apploader size.
+    pub size: u32,
+
+    /// Apploader trailer size.
     pub trailer_size: u32,
-    pub unknown:      u32,
-    pub data:         Vec<u8>,
+
+    /// Unknown0 (unknown purpose).
+    pub unknown: u32,
+
+    /// Apploader data.
+    pub data: Vec<u8>,
 }
 
 impl Apploader {
-    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
+    /// Deserialize a GCM Apploader from a
+    /// [Deserializer][`crate::helper::Deserializer`].
+    pub fn deserialize<D: Deserializer>(input: &mut D) -> Result<Self> {
         let date = input.deserialize_str::<0x10, Ascii>()?;
-        let entrypoint = input.deserialize_bu32()?;
+        let entry_point = input.deserialize_bu32()?;
         let size = input.deserialize_bu32()?;
         let trailer_size = input.deserialize_bu32()?;
         let unknown = input.deserialize_bu32()?;
-
-        println!(
-            "Apploader: date: {}, entrypoint: 0x{:08X}, size: 0x{:08X}, trailer_size: 0x{:08X}, \
-             unknown: 0x{:08X}",
-            date, entrypoint, size, trailer_size, unknown
-        );
-
         let data_size = (size + trailer_size) as usize;
         let data = input.read_buffer(data_size)?;
 
         Ok(Self {
             date,
-            entrypoint,
+            entry_point,
             size,
             trailer_size,
             unknown,
@@ -360,9 +428,9 @@ impl<'x, D: Deserializer + Seeker> FSTDecoder<'x, D> {
         Ok(())
     }
 
-    pub fn write_file<W: Write>(&mut self, entry: &FSTEntry, writer: &mut W) -> Result<()> {
+    pub fn write_file<W: Write>(&mut self, entry: &FSTEntry, _writer: &mut W) -> Result<()> {
         match entry {
-            FSTEntry::File { offset, size, .. } => {
+            FSTEntry::File { offset, .. } => {
                 self.reader.seek(SeekFrom::Start(*offset as u64))?;
 
                 todo!()
@@ -500,4 +568,46 @@ impl<'x, D: Deserializer + Seeker> FSTDecoder<'x, D> {
     // let root = self.root_directory();
     // self.for_each(root, func)
     // }
+}
+
+pub struct GCM {
+    boot: Boot,
+    bi2:  Bi2,
+    apploader: Apploader,
+}
+
+impl GCM {
+    pub fn boot(&self) -> &Boot { &self.boot }
+
+    pub fn bi2(&self) -> &Bi2 { &self.bi2 }
+
+    pub fn apploader(&self) -> &Apploader { &self.apploader }
+}
+
+pub fn parse<D: Deserializer + Seeker>(reader: &mut D) -> Result<GCM> {
+    let position = reader.position()?;
+
+    let boot = Boot::deserialize(reader)?;
+    ensure!(
+        position + 0x440 == reader.position()?,
+        InvalidData("invalid boot")
+    );
+
+    let bi2 = Bi2::deserialize(reader)?;
+    ensure!(
+        position + 0x2440 == reader.position()?,
+        InvalidData("invalid bi2")
+    );
+
+    let apploader = Apploader::deserialize(reader)?;
+    ensure!(
+        position + 0x2460 + (apploader.data.len() as u64) == reader.position()?,
+        InvalidData("invalid apploader")
+    );
+
+    reader.seek(SeekFrom::Start(boot.main_executable_offset as u64))?;
+
+    reader.seek(SeekFrom::Start(boot.fst_offset as u64))?;
+
+    Ok(GCM { boot, bi2, apploader })
 }

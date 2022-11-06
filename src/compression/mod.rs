@@ -1,7 +1,7 @@
-//! Decompress and compress various Nintendo compression formats used
-//! by GameCube and Wii games.
+//! Decompress and Compress various Nintendo compression formats.
+//!
+//! Compression supported:
+//! - [Yaz0][`yaz0`]
 
-#[cfg(feature = "yay0")]
-pub mod yay0;
 #[cfg(feature = "yaz0")]
 pub mod yaz0;

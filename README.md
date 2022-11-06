@@ -1,11 +1,15 @@
 <p align="center">
-  <a href="https://">
+  <a href="https://github.com/Julgodis/picori/">
     <picture>
       <img src="assets/images/picori_logo_512.png" height="128">
     </picture>
-    <h1 align="center">picori</h1>
+    <h1 align="center">
+      Picori
+    </h1>
   </a>
 </p>
+
+<div align="center">
 
 [![crates.io](https://img.shields.io/crates/v/picori)](https://crates.io/crates/picori)
 [![docs.rs](https://docs.rs/picori/badge.svg)](https://docs.rs/picori/)
@@ -13,37 +17,48 @@
 [![coverage](/../coverage/coverage/badges/flat.svg)](https://julgodis.github.io/picori/coverage/)
 [![license](https://img.shields.io/crates/l/picori)](https://github.com/Julgodis/picori/LICENSE)
 
-Picori is a library for building modding tools and decompilation tools for GameCube and Wii games. It includes support to serialize and deserialize many Nintendo-specific development and game formats, common compression algorithms, string encodings, and the ability to demangle C++ symbols.
+Picori is a library to support modding and decompilation tools for GameCube and Wii games. It includes support to serialize and deserialize many development and game formats, common compression algorithms, string encodings, and the ability to demangle C++ symbols.
 
-## Formats
+[Features](#features) •
+[Examples](#examples) •
+[Installation](#installation)
 
-Picori supports the following formats:
+```diff
+!!! It is currently in a very early stage of development. !!!
+```
 
--   DOL - Dolphin Executable
--   REL - Relocatable Executable
--   GCM - GameCube Master Disc
--   RARC - Nintendo RARC
--   CISO - Compact ISO (WIB)
--   ELF - Executable and Linkable Format[^note-elf]
+</div>
 
-In the future adding support for more formats is planned.
 
-[^note-elf]:
-    ELF is not a specific format used by either GameCube or Wii, but no known compiler outputs DOL files direct (and for good reasons), instead they produce ELF files. Support for ELF (specific to GameCube and Wii) will be very useful.
+## Features
 
-## Compression
-
-Picori supports the following compression algorithms:
-
+-   DOL (Dolphin Executable)
+-   REL (Relocatable Executable)
+-   GCM (GameCube Master Disc)
+-   CISO (Compact ISO)
 -   Yaz0
--   Yay0
-
-## C++ Demangler
-
-Picori also includes a C++ demangler for MWCC (Metrowerks CodeWarrior Compiler) that was probably included and shipped with the SDK and used for GameCube development.
+-   JIS X 0201
+-   Shift JIS (1997 and 2004)
 
 ## Examples
 
-TODO: Add examples
+**TODO: Add examples**
 
-License: MIT
+## Installation
+
+Picori is available on [crates.io](https://crates.io/crates/picori). Add the following to your `Cargo.toml`:
+
+```toml
+[dependencies]
+picori = "0.1"
+```
+
+## Contributing
+
+Contributions are welcome! If you would like to contribute, please open a pull
+request on GitHub. Please make sure that your code is formatted with `rustfmt`,
+and that it compiles without warnings or errors.
+
+## License
+
+Picori is licensed under an MIT license. See [LICENSE](LICENSE) for more information.

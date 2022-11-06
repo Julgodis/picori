@@ -1,4 +1,10 @@
-//! TODO:
+//! Encode and Decode various string encodings used by Nintendo for development.
+//!
+//! Formats supported:
+//! - [ASCII][`Ascii`]
+//! - [JIS X 0201][`JisX0201`]
+//! - [Shift JIS (1997)][`ShiftJis1997`]
+//! - [Shift JIS (2004)][`ShiftJis2004`]
 
 #[cfg(feature = "ascii")]
 mod ascii;

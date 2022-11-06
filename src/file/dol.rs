@@ -1,23 +1,23 @@
-//! Deserialize and serialize `.dol` files.
+//! Deserialize and Serialize Dolphin Executables (`.dol` files).
 //!
 //! # Deserialize
 //!
-//! To deserialize a `.dol` files, use the method [`from_bytes`] or
-//! [`Dol::from_bytes`].
+//! Deserialization can be done by calling [`parse`].
 //!
-//! ## Example
+//! ## Examples
 //!
 //! This example deserializes a `.dol` file. Open the `.dol` file and pass
-//! it to [`from_bytes`] to deserialize it into a [`Dol`] struct. On error,
-//! [`from_bytes`] returns a [`Error`]. Otherwise, you have now access to
-//! all the information contained in the inside the `.dol` file.
+//! it to [`parse`] to deserialize it. On error,
+//! [`parse`] returns a [Error][`crate::Error`]. Otherwise, you have now
+//! access to all the information contained in the inside the `.dol` file via
+//! [`Dol`].
 //!
 //! ```no_run
 //! # use std::fs::File;
-//! # use std::result::Result;
-//! fn main() -> Result<(), picori::Error> {
+//! # use picori::Result;
+//! fn main() -> Result<()> {
 //!     let mut file = File::open("main.dol")?;
-//!     let dol = picori::format::dol::from_bytes(&mut file)?;
+//!     let dol = picori::file::dol::parse(&mut file)?;
 //!     println!("entry point: {:#08x}", dol.entry_point());
 //!     Ok(())
 //! }
@@ -35,21 +35,38 @@ use crate::helper::take_last_n::TakeLastN;
 use crate::helper::{ensure, Deserializer, Seeker};
 use crate::Result;
 
-/// Plain data of a `.dol` header converted to native endianness.
+/// `Dolphin Executable` header (native endian).
 #[derive(Debug, Clone)]
 pub struct Header {
-    pub text_offset:  [u32; 7],  // 0x00
-    pub data_offset:  [u32; 11], // 0x1C
-    pub text_address: [u32; 7],  // 0x48
+    /// Offset of the text sections.
+    pub text_offset: [u32; 7], // 0x00
+
+    /// Offset of the data sections.
+    pub data_offset: [u32; 11], // 0x1C
+
+    /// Address of the text sections.
+    pub text_address: [u32; 7], // 0x48
+
+    /// Address of the data sections.
     pub data_address: [u32; 11], // 0x64
-    pub text_size:    [u32; 7],  // 0x90
-    pub data_size:    [u32; 11], // 0xAC
-    pub bss_address:  u32,       // 0xD8
-    pub bss_size:     u32,       // 0xDC
-    pub entry_point:  u32,       // 0xE0
+
+    /// Size of the text sections.
+    pub text_size: [u32; 7], // 0x90
+
+    /// Size of the data sections.
+    pub data_size: [u32; 11], // 0xAC
+
+    /// BSS address.
+    pub bss_address: u32, // 0xD8
+
+    /// BSS size.
+    pub bss_size: u32, // 0xDC
+
+    /// Entry point.
+    pub entry_point: u32, // 0xE0
 }
 
-/// Kind of a section in a `.dol` file.
+/// `Dolphin Executable` section kind.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SectionKind {
     /// Text section, e.g. `.init`, `.text`, etc.
@@ -63,7 +80,7 @@ pub enum SectionKind {
     Bss,
 }
 
-/// A `.dol` section.
+/// `Dolphin Executable` section.
 #[derive(Debug, Clone)]
 pub struct Section {
     /// The kind of section this is (text, data, or bss).
@@ -71,11 +88,12 @@ pub struct Section {
 
     /// The section name (e.g. `.text`, `.data`, `.rodata`, etc.), this was
     /// guessed from the type of section and order in which they appear in
-    /// the `.dol`. This is not guaranteed to be correct, as the `.dol`
-    /// format does not specify the name of the section.
+    /// the `Dolphin Executable`. This is not guaranteed to be correct.
+    /// [`section_name`] is responsible for guessing the name of the
+    /// section.
     pub name: &'static str,
 
-    /// The section address that the data is loaded to in memory on startup.
+    /// The section address to load the section data at startup.
     pub address: u32,
 
     /// The section size in bytes.
@@ -284,14 +302,13 @@ impl Section {
     }
 }
 
-/// Deserialize [`Dol`] from using a mutable [`std::io::Read`] +
-/// [`std::io::Seek`] reference. On error, a [`PicoriError`] is returned which
-/// contains the deserialization errors or the [`std::io::Error`] via
-/// [`PicoriError::IoError`]. The returned [`Dol`] struct contains all the
-/// information from the `.dol` file. Additionally, there is information included
-/// about [`__rom_copy_info`][`Dol::rom_copy_info`] and
-/// [`__bss_init_info`][`Dol::bss_init_info`] if they are available.
-pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol> {
+/// Deserialize [`Dol`] from a [`Deserializer`] + [`Seeker`].
+///
+/// # Panic
+///
+/// This function will not panic if the input is invalid. Any invalid input will
+/// be returned as an error.
+pub fn parse<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol> {
     let text_offset = reader.deserialize_bu32_array::<7>()?;
     let data_offset = reader.deserialize_bu32_array::<11>()?;
     let text_address = reader.deserialize_bu32_array::<7>()?;
@@ -350,17 +367,18 @@ pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol> {
             InvalidData("invalid bss init info (too many sections)")
         );
 
-        let bss_sections = bss_init_info
-            .iter()
-            .enumerate()
-            .map(|(index, entry)| Section {
-                kind:         SectionKind::Bss,
-                name:         section_name(SectionKind::Bss, index),
-                address:      entry.ram_address,
-                size:         entry.size,
-                aligned_size: entry.size.align_next(32),
-                data:         vec![],
-            });
+        let bss_sections =
+            bss_init_info
+                .iter()
+                .enumerate()
+                .map(|(index, entry)| Section {
+                    kind:         SectionKind::Bss,
+                    name:         section_name(SectionKind::Bss, index),
+                    address:      entry.ram_address,
+                    size:         entry.size,
+                    aligned_size: entry.size.align_next(32),
+                    data:         vec![],
+                });
         sections.extend(bss_sections)
     } else {
         // TODO: We can probably use the data section to determine the .bss sections.
@@ -422,13 +440,5 @@ impl Dol {
         self.sections
             .iter()
             .find(|x| address >= x.address && address < x.address + x.size)
-    }
-
-    /// Parse a `.dol` file and return a [`Dol`] struct on success. This is a
-    /// convenience function, it is equivalent to calling [`Dol::from_bytes`]
-    /// with similar arguments.
-    #[inline]
-    pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol> {
-        from_bytes(reader)
     }
 }

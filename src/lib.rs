@@ -1,63 +1,28 @@
-//! Picori is a library for building modding tools and decompilation tools for
-//! GameCube and Wii games. It includes support to serialize and deserialize
-//! many Nintendo specific development and game formats, common compression
-//! algorithms, string encodings and the ability to demangle C++ symbols.
-//!
-//! # Formats
-//!
-//! Picori supports the following formats:
-//!
-//! - [DOL - Dolphin Executable][`format::dol`]
-//! - [REL - Relocatable Executable][`format::rel`]
-//! - [GCM - GameCube Master Disc][`format::gcm`]
-//! - [RARC - Nintendo RARC][`format::rarc`]
-//! - [CISO - Compact ISO (WIB)][`format::ciso`]
-//! - [ELF - Executable and Linkable Format][`format::elf`][^note-elf]
-//!
-//! In the future adding support for more formats is planned.
-//!
-//! [^note-elf]: ELF is not a specific format used by either GameCube or Wii,
-//! but no known compiler outputs DOL files direct (and for good reasons),
-//! instead they produce ELF files. Support for   ELF (specific to GameCube and
-//! Wii) are useful.
-//!
-//! # Compression
-//!
-//! Picori supports the following compression algorithms:
-//!
-//! - [Yaz0][`compression::yaz0`]
-//! - [Yay0][`compression::yaz0`]
-//!
-//! # C++ Demangler
-//!
-//! Picori also includes a [C++ demangler][`demangle::mwcc`] for MWCC
-//! (Metrowerks CodeWarrior Compiler) that was probably include and shipped with
-//! the SDK and used for GameCube development.
-//!
-//! # Examples
-//!
-//! TODO: Add examples
+#![doc(html_logo_url = "https://raw.githubusercontent.com/Julgodis/picori/master/assets/images/picori_logo_512.png")]
+#![doc = include_str!("../README.md")]
 
-// TODO: These should be re-enabled again once I have found a suitable solution
-// for the create uninitialized storage and write data to it. I don't want to
-// first zero-fill the storage first...
+// TODO: Is there any performance benefit of allowing uninit vec unsafe code?
 #![allow(clippy::uninit_vec)]
-#![warn(warnings, missing_docs)]
+// TODO: deny missing_docs once all public items have docs
+#![allow(missing_docs)]
+#![deny(warnings)]
 
 #[cfg(feature = "compression")]
 pub mod compression;
 #[cfg(feature = "demangle")]
 pub mod demangle;
-#[cfg(feature = "file")]
-pub mod format;
 #[cfg(feature = "encoding")]
-pub mod string;
+pub mod encoding;
+#[cfg(feature = "file")]
+pub mod file;
+
+pub use helper::{Deserializer, Error, Reader, Result, Seeker};
 
 mod helper;
 
-pub use helper::{Error, Result};
-
-mod error {
+/// The [Error][`Error`] enum can indicate a variety of errors that can occur.
+/// This module contains the error types that can be returned by this library.
+pub mod error {
     pub use super::helper::{
         CompressionProblem, DecodingProblem, DecompressionProblem, DeserializeProblem,
         EncodingProblem, SerializeProblem,

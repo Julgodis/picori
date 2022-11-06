@@ -8,7 +8,7 @@ impl AlignPowerOfTwo for u32 {
             alignment.is_power_of_two(),
             "alignment must be a power of two"
         );
-        let alignment: Self = (alignment - 1).into();
+        let alignment = alignment - 1;
         self.wrapping_add(alignment) & !alignment
     }
 }

@@ -2,13 +2,13 @@
 mod tests {
     use std::io::Cursor;
 
-    use picori::format::dol::{from_bytes, section_name, SectionKind};
+    use picori::file::dol::{parse, section_name, SectionKind};
 
     #[test]
     fn invalid_header_size() {
         let mut dol = Vec::new();
         dol.extend_from_slice(&[0; 1]);
-        assert!(from_bytes(&mut Cursor::new(dol)).is_err());
+        assert!(parse(&mut Cursor::new(dol)).is_err());
     }
 
     #[test]
@@ -51,12 +51,13 @@ mod tests {
         dol.extend_from_slice(&0x39876543_u32.to_be_bytes());
 
         dol.extend_from_slice(&[
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0,
         ]);
 
         println!("dol {} bytes", dol.len());
 
-        let dol = from_bytes(&mut Cursor::new(dol)).unwrap();
+        let dol = parse(&mut Cursor::new(dol)).unwrap();
         assert_eq!(dol.header.text_offset, text_offset);
         assert_eq!(dol.header.text_address, text_address);
         assert_eq!(dol.header.text_size, text_size);
@@ -77,7 +78,7 @@ mod tests {
         let text0_size = 18 * 4 + 18 * 4;
         let text0_size_data = &[0xff, 0xff, 0xff, 0xff];
         dol.splice(text0_size..text0_size + 4, text0_size_data.iter().copied());
-        assert!(from_bytes(&mut Cursor::new(dol)).is_err());
+        assert!(parse(&mut Cursor::new(dol)).is_err());
     }
 
     #[test]

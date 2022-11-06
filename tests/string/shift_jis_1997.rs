@@ -1,17 +1,18 @@
 #[cfg(test)]
 mod tests {
-    use picori::string::{ShiftJis1997, ShiftJis1997IteratorExt};
+    use picori::encoding::{ShiftJis1997, ShiftJis1997IteratorExt};
 
-    static TEST_1997_UTF8: &[u8] = include_bytes!("../../assets/tests/shift-jis/1997.ok.utf-8.txt");
-    static TEST_1997_SHIFTJIS: &[u8] =
+    static TEST_UTF8: &[u8] =
+        include_bytes!("../../assets/tests/shift-jis/1997.ok.utf-8.txt");
+    static TEST_SHIFTJIS: &[u8] =
         include_bytes!("../../assets/tests/shift-jis/1997.ok.shift-jis.txt");
-    static TEST_ERROR_2BYTE_1997_SHIFTJIS: &[u8] =
+    static TEST_ERROR_2BYTE_SHIFTJIS: &[u8] =
         include_bytes!("../../assets/tests/shift-jis/1997.error.two-byte.shift-jis.txt");
 
     #[test]
     fn ok() {
-        let utf8 = String::from_utf8(TEST_1997_UTF8.to_vec()).unwrap();
-        let shift_jis = ShiftJis1997::all(TEST_1997_SHIFTJIS).unwrap();
+        let utf8 = String::from_utf8(TEST_UTF8.to_vec()).unwrap();
+        let shift_jis = ShiftJis1997::all(TEST_SHIFTJIS).unwrap();
 
         assert_eq!(utf8.len(), shift_jis.len());
         assert_eq!(utf8, shift_jis);
@@ -19,7 +20,7 @@ mod tests {
 
     #[test]
     fn err_two_byte() {
-        for x in TEST_ERROR_2BYTE_1997_SHIFTJIS.chunks(2) {
+        for x in TEST_ERROR_2BYTE_SHIFTJIS.chunks(2) {
             let result = ShiftJis1997::all(x);
             assert!(result.is_err());
         }

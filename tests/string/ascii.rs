@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use picori::string::{Ascii, AsciiIteratorExt};
+    use picori::encoding::{Ascii, AsciiIteratorExt};
 
     #[test]
     fn ok() {
