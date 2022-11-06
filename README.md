@@ -9,6 +9,7 @@
 
 [![crates.io](https://img.shields.io/crates/v/picori)](https://crates.io/crates/picori)
 [![docs.rs](https://docs.rs/picori/badge.svg)](https://docs.rs/picori/)
+[![build](https://github.com/Julgodis/picori/actions/workflows/build_and_test.yml/badge.svg?branch=master&event=push)](https://github.com/Julgodis/picori/actions/workflows/build_and_test.yml)
 [![coverage](/../coverage/coverage/badges/flat.svg)](https://julgodis.github.io/picori/coverage/)
 [![license](https://img.shields.io/crates/l/picori)](https://github.com/Julgodis/picori/LICENSE)
 
