@@ -5,6 +5,8 @@
 //! Compression is not yet supported.
 //!
 //! ## Decompression
+//! 
+//! Decompress a Yaz0 compressed file:
 //!
 //! ```no_run
 //! # use std::fs::File;
@@ -19,8 +21,8 @@
 //!
 //! ## References
 //!
-//! [Yaz0](http://www.amnoid.de/gc/yaz0.txt) - Implementation of the decompression algorithm is based
-//! on specification and format description by Amnoid.
+//! [Yaz0](http://www.amnoid.de/gc/yaz0.txt) - Implementation of the Yaz0 decompression is based
+//! on the specification and format description by Amnoid.
 
 use std::panic::Location;
 
@@ -129,7 +131,7 @@ impl<D: Parser + Seeker> Yaz0Reader<D> {
     }
 }
 
-/// Check if the given data is compressed with Yaz0.
+/// Check if the given data is compressed with Yaz0 by looking for the Yaz0 magic.
 pub fn is_yaz0<D: Parser + Seeker>(input: &mut D) -> bool {
     let mut check = || -> Result<bool> {
         let base = input.position()?;

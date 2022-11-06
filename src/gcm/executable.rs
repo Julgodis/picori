@@ -12,7 +12,7 @@ pub struct Executable {
 }
 
 impl Executable {
-    /// Parse [GCM][`crate::gcm`] executable ([DOL][`crate::dol`]) from binary.
+    /// Parse [GCM][`crate::gcm`] Executable ([DOL][`crate::dol`]) from binary.
     pub fn from_binary<D: Parser + Seeker>(input: &mut D) -> Result<Self> {
         let base = input.position()?;
         let text_offsets = input.bu32_array::<7>()?;

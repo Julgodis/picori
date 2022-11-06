@@ -46,7 +46,7 @@
 //! * [GCM][crate::gcm] - GameCube master disc
 //! * [CISO][crate::ciso] - Compact ISO
 //! * [Yaz0][crate::yaz0] - Yaz0 compression
-//! * [JIX X 0201][crate::jis_x_0201] - JIX X 0201 encoding
+//! * [JIS X 0201][crate::jis_x_0201] - JIS X 0201 encoding
 //! * [Shift JIS 1997][crate::shift_jis_1997] - Shift JIS 1997 encoding
 //! * [Shift JIS 2004][crate::shift_jis_2004] - Shift JIS 2004 encoding
 

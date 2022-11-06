@@ -7,8 +7,8 @@
 //!
 //! # Parse
 //!
-//! Because decompress [CISO][`crate::ciso`] files can be rather large, the
-//! [`CisoReader`] type is used to parse the file. The [`CisoReader`] will parse
+//! Because decompressed [CISO][`crate::ciso`] files can be rather large,
+//! [`CisoReader`] is used to parse the file incrementally. The [`CisoReader`] will parse
 //! the file header to determine how many blocks that are used. What you do with
 //! the blocks is up to you, they can be access via [`CisoReader::blocks`]. To
 //! decompress the whole file at once, use [`CisoReader::decompress`].

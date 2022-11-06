@@ -2,10 +2,8 @@
 //! 
 //! [ASCII][`Ascii`] is a 7-bit encoding designed for information interchange in
 //! English. Bytes with the eighth bit set are considered invalid and will cause
-//! an [`crate::error::DecodingProblem::InvalidByte`] to be returned.
-//!
-//! # Examples
-//! TODO: Add examples
+//! an [`InvalidByte`][`crate::error::DecodingProblem::InvalidByte`] to be returned.
+//! 
 
 use std::borrow::Borrow;
 use std::marker::PhantomData;

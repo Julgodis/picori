@@ -27,38 +27,38 @@ use crate::helper::alignment::AlignPowerOfTwo;
 use crate::helper::{ensure, ParseProblem, Parser, ProblemLocation, Seeker};
 use crate::Result;
 
-/// `Dolphin Executable` header (native endian).
+/// Dolphin executable header.
 #[derive(Debug, Clone)]
 pub struct Header {
     /// Offset of the text sections.
-    pub text_offset: [u32; 7], // 0x00
+    pub text_offset: [u32; 7],
 
     /// Offset of the data sections.
-    pub data_offset: [u32; 11], // 0x1C
+    pub data_offset: [u32; 11],
 
     /// Address of the text sections.
-    pub text_address: [u32; 7], // 0x48
+    pub text_address: [u32; 7],
 
     /// Address of the data sections.
-    pub data_address: [u32; 11], // 0x64
+    pub data_address: [u32; 11],
 
     /// Size of the text sections.
-    pub text_size: [u32; 7], // 0x90
+    pub text_size: [u32; 7],
 
     /// Size of the data sections.
-    pub data_size: [u32; 11], // 0xAC
+    pub data_size: [u32; 11],
 
     /// BSS address.
-    pub bss_address: u32, // 0xD8
+    pub bss_address: u32,
 
     /// BSS size.
-    pub bss_size: u32, // 0xDC
+    pub bss_size: u32,
 
     /// Entry point.
-    pub entry_point: u32, // 0xE0
+    pub entry_point: u32,
 }
 
-/// `Dolphin Executable` section kind.
+/// Dolphin executable section kind.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SectionKind {
     /// Text section, e.g. `.init`, `.text`, etc.
@@ -72,7 +72,7 @@ pub enum SectionKind {
     Bss,
 }
 
-/// `Dolphin Executable` section.
+/// Dolphin executable section.
 #[derive(Debug, Clone)]
 pub struct Section {
     /// The kind of section this is (text, data, or bss).
@@ -80,7 +80,7 @@ pub struct Section {
 
     /// The section name (e.g. `.text`, `.data`, `.rodata`, etc.), this was
     /// guessed from the type of section and order in which they appear in
-    /// the `Dolphin Executable`. This is not guaranteed to be correct.
+    /// the Dolphin executable. This is not guaranteed to be correct.
     /// [`Section::guess_name`] is responsible for guessing the name of the
     /// section.
     pub name: &'static str,
