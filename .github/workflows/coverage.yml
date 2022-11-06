@@ -31,7 +31,7 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           override: true
-          components: rustfmt, clippy, llvm-tools-preview
+          components: llvm-tools-preview, grcov
       - name: coverage
         env:
           RUSTFLAGS: '-Cinstrument-coverage'
