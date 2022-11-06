@@ -53,7 +53,8 @@ jobs:
         run: |
           git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
           git config --global user.email "username@users.noreply.github.com"
-          git checkout -b coverage
+          git fetch
+          git checkout coverage
           git add coverage
           git commit -m "${{ env.CI_COMMIT_MESSAGE }}"
           git push
