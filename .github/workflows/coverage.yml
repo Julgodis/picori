@@ -49,6 +49,7 @@ jobs:
           LLVM_PROFILE_FILE: 'temp/coverage/coverage-%p-%m.profraw'
           CARGO_INCREMENTAL: '0'
         run: |
+          ls -lah
           mkdir -p temp/coverage/
           cargo build --verbose
           cargo test --verbose
