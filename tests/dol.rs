@@ -1,13 +1,12 @@
-use picori::format::dol;
 
 #[cfg(test)]
 mod dol_tests {
+    /*
     use picori::internal::SliceReader;
 
     use super::*;
 
     static GZLE01: &[u8] = include_bytes!("../assets/tests/dol/test0.dol");
-/*
     #[test]
     fn invalid_header_size() {
         let mut reader = SliceReader::new(&GZLE01[0..10]);
