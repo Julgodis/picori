@@ -2,18 +2,9 @@
 //!
 //! CISO is also known as WIB. It is a compressed format that support any
 //! underlying file format, i.e., must not be used to ISO files.
-#![feature(negative_impls)]
 
-use std::borrow::Cow;
-use std::error::Error;
-use std::f32::consts::E;
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::{io::{Read, Seek, SeekFrom, Write}, result::Result};
 
-use anyhow::{bail, ensure, Result};
-use flate2::{Decompress, FlushDecompress};
-use itertools::Itertools;
-
-use crate::helper::{read_lu32, read_lu64};
 use crate::stream::{DeserializeError, DeserializeStream, Deserializeble};
 
 /// CISO magic number representing the four characters "CISO".
@@ -37,13 +28,15 @@ impl Deserializeble for Header {
         input.read_stream(&mut block_size)?;
         let block_size = u32::from_le_bytes(block_size) as usize;
 
-        let block_map = [0u8; 0x8000 - 8];
-
+        
         if magic != MAGIC {
             return Err(DeserializeError::InvalidHeader("invalid magic"));
-        } else if block_size >= 0x8000 && block_size <= 0x80000000 {
+        } else if block_size <= 0x8000 || block_size > 0x80000000 {
             return Err(DeserializeError::InvalidHeader("invalid block size"));
         }
+
+        let mut block_map = [0u8; 0x8000 - 8];
+        input.read_stream(&mut block_map)?;
 
         let block_total = block_map
             .iter()
@@ -77,6 +70,7 @@ impl<'x, R: Read + Seek> CisoDecoder<'x, R> {
     pub fn new(reader: &'x mut R) -> Result<Self, DeserializeError> {
         let header = Header::deserialize_stream(reader)?;
         let data_offset = reader.stream_position()?;
+        println!("header: {:?}", header);
         Ok(Self {
             header,
             reader,
@@ -84,7 +78,7 @@ impl<'x, R: Read + Seek> CisoDecoder<'x, R> {
         })
     }
 
-    pub fn decompress<W: Write>(&mut self, writer: &mut W) -> Result<()> {
+    pub fn decode<W: Write>(&mut self, writer: &mut W) -> Result<(), DeserializeError> {
         self.reader.seek(SeekFrom::Start(self.data_offset))?;
 
         let zero_block = vec![0 as u8; self.header.block_size];

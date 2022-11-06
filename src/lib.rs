@@ -34,6 +34,10 @@
 //! (etrowerks CodeWarrior Compiler).
 //! 
 
+#![feature(try_trait_v2)]
+#![feature(maybe_uninit_uninit_array)]
+#![feature(read_buf)]
+
 pub mod format;
 pub mod compression;
 pub mod demangle;
@@ -42,4 +46,9 @@ pub mod string;
 mod error;
 mod helper;
 mod stream;
+mod endian;
 
+pub use self::stream::Deserializeble;
+pub use self::stream::DeserializeError;
+
+pub use self::helper::SliceReader;

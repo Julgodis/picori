@@ -13,10 +13,11 @@
 //! using the [`entrypoint`] method.
 //! ```no_run
 //! use anyhow::Result;
+//! use std::fs::File;
 //! fn main() -> Result<()> {
-//!     let data = std::fs::read("../../assets/gzle01.dol")?;
-//!     let dol = picori::format::dol::from_bytes(&data)?;
-//!     println!("Entrypoint: 0x{:08x}", dol.entrypoint());
+//!     let mut file = File::open("../../assets/gzle01.dol")?;
+//!     let dol = picori::format::dol::from_bytes(&mut file)?;
+//!     println!("entry point: {:#08x}", dol.entry_point());
 //!     Ok(())
 //! }
 //! ```
@@ -25,11 +26,14 @@
 //!
 //! TODO: Write this section.
 
-use anyhow::{ensure, Result};
+use std::io::{Seek, SeekFrom};
+use std::result::Result;
+
 use itertools::{chain, izip};
 
-use crate::error::DolError;
-use crate::helper::{align_next, checked_add, read_bu32, read_bu32_array, TakeLastN};
+use crate::error::DolError; 
+use crate::helper::{align_next, ReadExtension, ReadExtensionU32, SliceReader, TakeLastN};
+use crate::DeserializeError;
 
 /// The `.dol` header without any modifications. This is the raw data that is
 /// read from the file. The data has been endian-flipped to be in the native
@@ -44,19 +48,26 @@ pub struct Header {
     pub data_size:    [u32; 11], // 0xAC
     pub bss_address:  u32,       // 0xD8
     pub bss_size:     u32,       // 0xDC
-    pub entrypoint:   u32,       // 0xE0
+    pub entry_point:  u32,       // 0xE0
 }
 
-#[derive(Debug)]
+/// Kind of a section in a `.dol` file.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SectionKind {
+    /// Text section, e.g. `.init`, `.text`, etc.
     Text,
+
+    // Data section, e.g. `extab_`, `extabindex_`, `.ctors`, `.dtors`, `.rodata`, `.data`,
+    // `.sdata`, `.sdata2`, etc.
     Data,
+
+    // BSS section, e.g., `.bss`, `.sbss`, `.sbss2`, etc.
     Bss,
 }
 
-///
+/// A section in a `.dol` file.
 #[derive(Debug)]
-pub struct Section<'a> {
+pub struct Section {
     /// The kind of section this is (text, data, or bss).
     pub kind: SectionKind,
 
@@ -75,8 +86,9 @@ pub struct Section<'a> {
     /// The section size in bytes, rounded up to the nearest multiple of 32.
     pub aligned_size: u32,
 
-    /// The section data.
-    pub data: &'a [u8],
+    /// The section data. For `.bss` sections ([`SectionKind::Bss`]), this
+    /// will be an empty vector.
+    pub data: Vec<u8>,
 }
 
 /// RomCopyInfo represents one entry in the `__rom_copy_info` symbol generated
@@ -112,33 +124,55 @@ pub struct BssInitInfo {
     pub size: u32,
 }
 
-pub struct Dol<'a> {
+pub struct Dol {
     pub header:        Header,
     pub rom_copy_info: Option<Vec<RomCopyInfo>>,
     pub bss_init_info: Option<Vec<BssInitInfo>>,
-    pub sections:      Vec<Section<'a>>,
+    pub sections:      Vec<Section>,
 }
 
 impl RomCopyInfo {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        ensure!(bytes.len() == 12, "invalid size for RomCopyInfo");
-        let rom_address = read_bu32!(bytes, 0);
-        let ram_address = read_bu32!(bytes, 4);
-        let size = read_bu32!(bytes, 8);
-        Ok(RomCopyInfo {
-            rom_address,
-            ram_address,
-            size,
-        })
+    fn from_bytes<Reader>(reader: &mut Reader) -> Result<Self, DeserializeError>
+    where
+        Reader: ReadExtension,
+    {
+        let rom_copy_info: Result<_, DeserializeError> = {
+            let rom_address = reader.read_bu32()?;
+            let ram_address = reader.read_bu32()?;
+            let size = reader.read_bu32()?;
+            println!("rom {rom_address} {ram_address} {size}");
+            Ok(RomCopyInfo {
+                rom_address,
+                ram_address,
+                size,
+            })
+        };
+
+        if let Err(e) = rom_copy_info {
+            Err(DeserializeError::InvalidData("invalid RomCopyInfo"))
+        } else {
+            Ok(rom_copy_info.unwrap())
+        }
     }
 }
 
 impl BssInitInfo {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        ensure!(bytes.len() == 8, "invalid size for BssInitInfo");
-        let ram_address = read_bu32!(bytes, 0);
-        let size = read_bu32!(bytes, 4);
-        Ok(BssInitInfo { ram_address, size })
+    fn from_bytes<Reader>(reader: &mut Reader) -> Result<Self, DeserializeError>
+    where
+        Reader: ReadExtension,
+    {
+        let rom_copy_info: Result<_, DeserializeError> = {
+            let ram_address = reader.read_bu32()?;
+            let size = reader.read_bu32()?;
+            println!("bss {ram_address} {size}");
+            Ok(BssInitInfo { ram_address, size })
+        };
+
+        if let Err(e) = rom_copy_info {
+            Err(DeserializeError::InvalidData("invalid BssInitInfo"))
+        } else {
+            Ok(rom_copy_info.unwrap())
+        }
     }
 }
 
@@ -148,7 +182,7 @@ fn rom_copy_info_search(data: &[u8], address: u32) -> Option<Vec<RomCopyInfo>> {
     Some(
         data.take_last_n(0x200)
             .windows(12)
-            .map(|x| RomCopyInfo::from_bytes(x))
+            .map(|x| RomCopyInfo::from_bytes(&mut SliceReader::new(x)))
             .filter(|x| x.is_ok())
             .map(|x| x.unwrap())
             .skip_while(|x| x.rom_address != address || x.ram_address != address)
@@ -164,7 +198,7 @@ fn bss_init_info_search(data: &[u8], address: u32) -> Option<Vec<BssInitInfo>> {
     Some(
         data.take_last_n(0x200)
             .windows(8)
-            .map(|x| BssInitInfo::from_bytes(x))
+            .map(|x| BssInitInfo::from_bytes(&mut SliceReader::new(x)))
             .filter(|x| x.is_ok())
             .map(|x| x.unwrap())
             .skip_while(|x| x.ram_address != address)
@@ -209,98 +243,83 @@ fn section_name(kind: SectionKind, index: usize) -> &'static str {
     }
 }
 
-pub fn from_bytes<'i>(bytes: &'i [u8]) -> Result<Dol<'i>> {
-    ensure!(bytes.len() >= 0x100, DolError::InvalidHeaderSize {
-        size: bytes.len(),
-    });
-
-    let header = Header {
-        text_offset:  read_bu32_array!(bytes, 0x00, 7),
-        data_offset:  read_bu32_array!(bytes, 0x1C, 11),
-        text_address: read_bu32_array!(bytes, 0x48, 7),
-        data_address: read_bu32_array!(bytes, 0x64, 11),
-        text_size:    read_bu32_array!(bytes, 0x90, 7),
-        data_size:    read_bu32_array!(bytes, 0xAC, 11),
-        bss_address:  read_bu32!(bytes, 0xD8),
-        bss_size:     read_bu32!(bytes, 0xDC),
-        entrypoint:   read_bu32!(bytes, 0xE0),
-    };
-
-    for (i, (offset, size)) in header
-        .text_offset
-        .iter()
-        .zip(header.text_size.iter())
-        .enumerate()
+impl Section {
+    fn new<Reader>(
+        reader: &mut Reader,
+        kind: SectionKind,
+        index: usize,
+        offset: u32,
+        address: u32,
+        size: u32,
+        aligned_size: u32,
+    ) -> Result<Self, DeserializeError>
+    where
+        Reader: ReadExtension + Seek,
     {
-        if offset == &0 || size == &0 {
-            continue;
-        }
+        let mut data = unsafe {
+            let mut data = Vec::with_capacity(size as usize);
+            data.set_len(size as usize);
+            data
+        };
 
-        let begin = *offset;
-        let end = checked_add(begin, *size)?;
-        ensure!(
-            begin >= 0x100 && end <= bytes.len() as u32,
-            DolError::TextSectionOutOfBounds { section: i }
-        );
+        reader.seek(SeekFrom::Start(offset as u64))?;
+        reader.read_exact(data.as_mut_slice())?;
+
+        Ok(Self {
+            kind:         kind,
+            name:         section_name(kind, index),
+            address:      address,
+            size:         size,
+            aligned_size: aligned_size,
+            data:         data,
+        })
     }
+}
 
-    for (i, (offset, size)) in header
-        .data_offset
-        .iter()
-        .zip(header.data_size.iter())
+/// Parse a `.dol` file and return a [`Dol`] struct on success. The
+/// [`Dol`] struct contains all the information from the `.dol` file.
+/// Additional information included is `__rom_copy_info` and
+/// `__bss_init_info` if they are available.
+pub fn from_bytes<Reader>(reader: &mut Reader) -> Result<Dol, DeserializeError>
+where
+    Reader: ReadExtension + Seek,
+{
+    let text_offset = reader.read_bu32_array::<7>()?;
+    let data_offset = reader.read_bu32_array::<11>()?;
+    let text_address = reader.read_bu32_array::<7>()?;
+    let data_address = reader.read_bu32_array::<11>()?;
+    let text_size = reader.read_bu32_array::<7>()?;
+    let data_size = reader.read_bu32_array::<11>()?;
+    let bss_address = reader.read_bu32()?;
+    let bss_size = reader.read_bu32()?;
+    let entry_point = reader.read_bu32()?;
+
+    let text_sections = izip!(text_offset.iter(), text_address.iter(), text_size.iter());
+    let text_sections = text_sections
         .enumerate()
-    {
-        if offset == &0 || size == &0 {
-            continue;
-        }
+        .map(|(i, x)| (SectionKind::Text, i, x));
 
-        let begin = *offset;
-        let end = checked_add(begin, *size)?;
-        ensure!(
-            begin >= 0x100 && end <= bytes.len() as u32,
-            DolError::DataSectionOutOfBounds { section: i }
-        );
-    }
-
-    let text_sections = izip!(
-        header.text_offset.iter(),
-        header.text_address.iter(),
-        header.text_size.iter(),
-    )
-    .enumerate()
-    .map(|(index, (offset, address, size))| Section {
-        kind:         SectionKind::Text,
-        name:         section_name(SectionKind::Text, index),
-        address:      *address,
-        size:         *size,
-        aligned_size: *size,
-        data:         &bytes[*offset as usize..(*offset + *size) as usize],
-    });
-
-    let data_sections = izip!(
-        header.data_offset.iter(),
-        header.data_address.iter(),
-        header.data_size.iter(),
-    )
-    .enumerate()
-    .map(|(index, (offset, address, size))| Section {
-        kind:         SectionKind::Data,
-        name:         section_name(SectionKind::Data, index),
-        address:      *address,
-        size:         *size,
-        aligned_size: *size,
-        data:         &bytes[*offset as usize..(*offset + *size) as usize],
-    });
+    let data_sections = izip!(data_offset.iter(), data_address.iter(), data_size.iter());
+    let data_sections = data_sections
+        .enumerate()
+        .map(|(i, x)| (SectionKind::Data, i, x));
 
     let mut sections: Vec<Section> = chain!(text_sections, data_sections)
-        .filter(|section| section.size != 0)
-        .collect();
+        .map(|(kind, index, (offset, address, size))| {
+            Section::new(reader, kind, index, *offset, *address, *size, *size)
+        })
+        .filter(|section| match section {
+            Ok(section) => section.size != 0,
+            Err(_) => true, // don't skip errors here, we want to propagate them to the caller
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     let init = sections.iter().find(|x| x.name == ".init");
-    let rom_copy_info = init.map_or(None, |init| rom_copy_info_search(init.data, init.address));
-
+    let rom_copy_info = init.map_or(None, |init| {
+        rom_copy_info_search(init.data.as_slice(), init.address)
+    });
     let bss_init_info = init.map_or(None, |init| {
-        bss_init_info_search(init.data, header.bss_address)
+        bss_init_info_search(init.data.as_slice(), bss_address)
     });
 
     for section in sections.iter_mut() {
@@ -324,44 +343,77 @@ pub fn from_bytes<'i>(bytes: &'i [u8]) -> Result<Dol<'i>> {
                 address:      entry.ram_address,
                 size:         entry.size,
                 aligned_size: align_next(entry.size, 32),
-                data:         &[],
+                data:         vec![],
             });
         sections.extend(bss_sections)
     } else {
+        // TODO: We can probably use the data section to determine the .bss sections.
         sections.push(Section {
             kind:         SectionKind::Bss,
             name:         section_name(SectionKind::Bss, 0),
-            address:      header.bss_address,
-            size:         header.bss_size,
-            aligned_size: header.bss_size,
-            data:         &[],
+            address:      bss_address,
+            size:         bss_size,
+            aligned_size: bss_size,
+            data:         vec![],
         });
     }
 
     Ok(Dol {
-        header,
+        header:        Header {
+            text_offset,
+            data_offset,
+            text_address,
+            data_address,
+            text_size,
+            data_size,
+            bss_address,
+            bss_size,
+            entry_point,
+        },
         rom_copy_info: rom_copy_info,
         bss_init_info: bss_init_info,
-        sections: sections,
+        sections:      sections,
     })
 }
 
-pub fn to_bytes<'data>(_dol: &Dol<'data>) -> Result<Vec<u8>> {
+pub fn to_bytes(_dol: &Dol) -> Result<Vec<u8>, DeserializeError> {
     unimplemented!("picori::format::dol::to_bytes");
 }
 
-impl<'data> Dol<'data> {
-    pub fn entrypoint(&self) -> u32 { self.header.entrypoint }
+impl Dol {
+    /// Returns the entry point of the DOL file. This is the address of the
+    /// first instruction that will be executed. The section containing the
+    /// entry point can be found using [`Dol::section_by_address`]. Entry point
+    /// is also available via direct access to the [`Dol::header`].
+    #[inline]
+    pub fn entry_point(&self) -> u32 { self.header.entry_point }
 
-    pub fn section_by_name(&self, name: &str) -> Option<&Section<'data>> {
+    /// Returns an [`Some(&Section)`] if the DOL file contains a section with
+    /// the given name `name` or [`None`] otherwise. Section names are not
+    /// information provided by the `.dol` format, instead we assign names
+    /// based on the section kind [`SectionKind`] and the index of the section.
+    #[inline]
+    pub fn section_by_name(&self, name: &str) -> Option<&Section> {
         self.sections.iter().find(|x| x.name == name)
     }
 
-    pub fn section_by_address(&self, address: u32) -> Option<&Section<'data>> {
+    /// Returns an [`Some(&Section)`] if the DOL file contains a section with
+    /// that contains the given address `address` or [`None`] otherwise.
+    #[inline]
+    pub fn section_by_address(&self, address: u32) -> Option<&Section> {
         self.sections
             .iter()
-            .find(|x| x.address <= address && address < x.address + x.size)
+            .find(|x| address >= x.address && address < x.address + x.size)
     }
 
-    pub fn from_bytes(bytes: &'data [u8]) -> Result<Dol<'data>> { from_bytes(bytes) }
+    /// Parse a `.dol` file and return a [`Dol`] struct on success. This is a
+    /// convenience function, it is equivalent to calling [`Dol::from_bytes`]
+    /// with similar arguments.
+    #[inline]
+    pub fn from_bytes<Reader>(reader: &mut Reader) -> Result<Dol, DeserializeError>
+    where
+        Reader: ReadExtension + Seek,
+    {
+        from_bytes(reader)
+    }
 }

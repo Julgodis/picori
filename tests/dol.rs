@@ -2,25 +2,30 @@ use picori::format::dol;
 
 #[cfg(test)]
 mod dol_tests {
+    use picori::SliceReader;
+
     use super::*;
 
     static GZLE01: &[u8] = include_bytes!("../assets/gzle01.dol");
 
     #[test]
     fn invalid_header_size() {
-        let result = dol::from_bytes(&GZLE01[0..10]);
+        let mut reader = SliceReader::new(&GZLE01[0..10]);
+        let result = dol::from_bytes(&mut reader);
         assert!(result.is_err());
     }
 
     #[test]
     fn section_out_of_bounds() {
-        let result = dol::from_bytes(&GZLE01[0..0x100]);
+        let mut reader = SliceReader::new(&GZLE01[0..0x100]);
+        let result = dol::from_bytes(&mut reader);
         assert!(result.is_err());
     }
 
     #[test]
     fn header() {
-        let result = dol::from_bytes(GZLE01);
+        let mut reader = SliceReader::new(&GZLE01);
+        let result = dol::from_bytes(&mut reader);
         assert!(result.is_ok());
 
         let text_offset: [u32; 7] = [
@@ -56,7 +61,8 @@ mod dol_tests {
 
     #[test]
     fn sections() {
-        let result = dol::from_bytes(GZLE01);
+        let mut reader = SliceReader::new(&GZLE01);
+        let result = dol::from_bytes(&mut reader);
         assert!(result.is_ok());
 
         let dol = result.unwrap();
