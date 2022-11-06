@@ -1,9 +1,10 @@
 use std::collections::HashMap;
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{SeekFrom, Write};
 
-use crate::helper::error::{ensure, FormatError, PicoriError};
-use crate::helper::{Deserializer, Seeker};
+use crate::error::DeserializeProblem::*;
+use crate::helper::{ensure, Deserializer, Seeker};
 use crate::string::Ascii;
+use crate::Result;
 
 #[derive(Debug, Default)]
 pub struct Boot {
@@ -32,7 +33,7 @@ pub struct Boot {
 }
 
 impl Boot {
-    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self, PicoriError> {
+    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
         let console_id = input.deserialize_u8()?;
         let game_code = input.deserialize_u8_array::<2>()?;
         let country_code = input.deserialize_u8()?;
@@ -163,7 +164,7 @@ impl Bi2 {
 }
 
 impl Bi2 {
-    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self, PicoriError> {
+    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
         let values = input
             .deserialize_bu32_array::<{ 0x2000 / 4 }>()?
             .iter()
@@ -187,7 +188,7 @@ pub struct Apploader {
 }
 
 impl Apploader {
-    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self, PicoriError> {
+    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
         let date = input.deserialize_str::<0x10, Ascii>()?;
         let entrypoint = input.deserialize_bu32()?;
         let size = input.deserialize_bu32()?;
@@ -220,7 +221,7 @@ pub struct MainExecutable {
 }
 
 impl MainExecutable {
-    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self, PicoriError> {
+    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
         let base = input.position()?;
         let text_offsets = input.deserialize_bu32_array::<7>()?;
         let data_offsets = input.deserialize_bu32_array::<11>()?;
@@ -242,7 +243,7 @@ impl MainExecutable {
         let total_size = text_iter
             .chain(data_iter)
             .max()
-            .ok_or(FormatError::InvalidHeader("unable to find executable size"))?;
+            .ok_or(InvalidHeader("unable to find executable size"))?;
 
         input.seek(SeekFrom::Start(base))?;
         let data = input.read_buffer(total_size as usize)?;
@@ -280,7 +281,7 @@ enum _FstEntry {
 }
 
 impl _FstEntry {
-    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self, PicoriError> {
+    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
         let flag_or_name_offset = input.deserialize_bu32()?;
         let data_offset_or_parent = input.deserialize_bu32()?;
         let data_length_or_end = input.deserialize_bu32()?;
@@ -311,7 +312,7 @@ pub struct FSTDecoder<'x, D: Deserializer + Seeker> {
 
 impl<'x, D: Deserializer + Seeker> FSTDecoder<'x, D> {
     #[inline]
-    pub fn new(reader: &'x mut D, fst_size: usize) -> Result<Self, PicoriError> {
+    pub fn new(reader: &'x mut D, fst_size: usize) -> Result<Self> {
         let mut decoder = Self {
             entries: Vec::new(),
             reader,
@@ -321,19 +322,19 @@ impl<'x, D: Deserializer + Seeker> FSTDecoder<'x, D> {
         Ok(decoder)
     }
 
-    fn parse_entries(&mut self) -> Result<(), PicoriError> {
+    fn parse_entries(&mut self) -> Result<()> {
         let _ = self.reader.deserialize_bu32()?;
         let _ = self.reader.deserialize_bu32()?;
         let root_count = self.reader.deserialize_bu32()?;
         let entry_count = root_count as usize;
         ensure!(
             entry_count <= 0x4000,
-            FormatError::InvalidHeader("entry count limit (max 16384)")
+            InvalidHeader("entry count limit (max 16384)")
         );
 
         let entries = (1..entry_count)
             .map(|_| _FstEntry::deserialize(self.reader))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
         let entry_size = 0x0C * entry_count;
         let name_table_size = self.fst_size - entry_size;
@@ -359,11 +360,7 @@ impl<'x, D: Deserializer + Seeker> FSTDecoder<'x, D> {
         Ok(())
     }
 
-    pub fn write_file<W: Write>(
-        &mut self,
-        entry: &FSTEntry,
-        writer: &mut W,
-    ) -> Result<(), PicoriError> {
+    pub fn write_file<W: Write>(&mut self, entry: &FSTEntry, writer: &mut W) -> Result<()> {
         match entry {
             FSTEntry::File { offset, size, .. } => {
                 self.reader.seek(SeekFrom::Start(*offset as u64))?;
@@ -380,22 +377,22 @@ impl<'x, D: Deserializer + Seeker> FSTDecoder<'x, D> {
 
                 Ok(())*/
             },
-            _ => Err(FormatError::InvalidData("not a file").into()),
+            _ => Err(InvalidData("not a file").into()),
         }
     }
 
     #[inline]
-    pub fn file_data(&mut self, entry: &FSTEntry) -> Result<Vec<u8>, PicoriError> {
+    pub fn file_data(&mut self, entry: &FSTEntry) -> Result<Vec<u8>> {
         match entry {
             FSTEntry::File { offset, size, .. } => {
                 self.reader.seek(SeekFrom::Start(*offset as u64))?;
                 Ok(self.reader.read_buffer(*size as usize)?)
             },
-            _ => Err(FormatError::InvalidData("not a file").into()),
+            _ => Err(InvalidData("not a file").into()),
         }
     }
 
-    pub fn files(&self, directory: FSTEntry) -> Result<Vec<FSTEntry>, PicoriError> {
+    pub fn files(&self, directory: FSTEntry) -> Result<Vec<FSTEntry>> {
         if let FSTEntry::Directory { begin, end, .. } = directory {
             let mut files = Vec::new();
             let mut index = begin as usize;
@@ -412,7 +409,7 @@ impl<'x, D: Deserializer + Seeker> FSTDecoder<'x, D> {
 
             Ok(files)
         } else {
-            Err(FormatError::InvalidData("not a directory").into())
+            Err(InvalidData("not a directory").into())
         }
     }
 

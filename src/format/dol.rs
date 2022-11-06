@@ -9,13 +9,13 @@
 //!
 //! This example deserializes a `.dol` file. Open the `.dol` file and pass
 //! it to [`from_bytes`] to deserialize it into a [`Dol`] struct. On error,
-//! [`from_bytes`] returns a [`PicoriError`]. Otherwise, you have now access to
+//! [`from_bytes`] returns a [`Error`]. Otherwise, you have now access to
 //! all the information contained in the inside the `.dol` file.
 //!
 //! ```no_run
-//! use std::fs::File;
-//! use std::result::Result;
-//! fn main() -> Result<(), picori::PicoriError> {
+//! # use std::fs::File;
+//! # use std::result::Result;
+//! fn main() -> Result<(), picori::Error> {
 //!     let mut file = File::open("main.dol")?;
 //!     let dol = picori::format::dol::from_bytes(&mut file)?;
 //!     println!("entry point: {:#08x}", dol.entry_point());
@@ -27,16 +27,13 @@
 //!
 //! TODO: Write this section.
 
-use std::io::Cursor;
-use std::result::Result;
+use std::io::{Cursor, SeekFrom};
 
-use itertools::{chain, izip};
-
-use crate::ensure;
+use crate::error::DeserializeProblem::*;
 use crate::helper::alignment::AlignPowerOfTwo;
-use crate::helper::error::{FormatError, PicoriError};
 use crate::helper::take_last_n::TakeLastN;
-use crate::helper::{Deserializer, Seeker};
+use crate::helper::{ensure, Deserializer, Seeker};
+use crate::Result;
 
 /// Plain data of a `.dol` header converted to native endianness.
 #[derive(Debug, Clone)]
@@ -145,8 +142,8 @@ pub struct Dol {
 
 impl RomCopyInfo {
     /// Deserialize [`RomCopyInfo`] from a [`ReadExtension`].
-    fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Self, PicoriError> {
-        let rom_copy_info: Result<_, PicoriError> = {
+    fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Self> {
+        let rom_copy_info: Result<_> = {
             let rom_address = reader.deserialize_bu32()?;
             let ram_address = reader.deserialize_bu32()?;
             let size = reader.deserialize_bu32()?;
@@ -157,20 +154,20 @@ impl RomCopyInfo {
             })
         };
 
-        rom_copy_info.map_err(|_| FormatError::InvalidData("invalid RomCopyInfo").into())
+        rom_copy_info.map_err(|_| InvalidData("invalid RomCopyInfo").into())
     }
 }
 
 impl BssInitInfo {
     /// Deserialize [`BssInitInfo`] from a [`ReadExtension`].
-    fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Self, PicoriError> {
-        let bss_init_info: Result<_, PicoriError> = {
+    fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Self> {
+        let bss_init_info: Result<_> = {
             let ram_address = reader.deserialize_bu32()?;
             let size = reader.deserialize_bu32()?;
             Ok(BssInitInfo { ram_address, size })
         };
 
-        bss_init_info.map_err(|_| FormatError::InvalidData("invalid BssInitInfo").into())
+        bss_init_info.map_err(|_| InvalidData("invalid BssInitInfo").into())
     }
 }
 
@@ -259,7 +256,7 @@ impl Section {
         address: u32,
         size: u32,
         aligned_size: u32,
-    ) -> Result<Self, PicoriError>
+    ) -> Result<Self>
     where
         D: Deserializer + Seeker,
     {
@@ -269,9 +266,10 @@ impl Section {
         } else {
             ensure!(
                 size <= 0x2000000,
-                FormatError::InvalidData("invalid section size (too large)")
+                InvalidData("invalid section size (too large)")
             );
 
+            reader.seek(SeekFrom::Start(offset as u64))?;
             reader.read_buffer(size as usize)?
         };
 
@@ -290,10 +288,10 @@ impl Section {
 /// [`std::io::Seek`] reference. On error, a [`PicoriError`] is returned which
 /// contains the deserialization errors or the [`std::io::Error`] via
 /// [`PicoriError::IoError`]. The returned [`Dol`] struct contains all the
-/// information from the `.dol` file. Additionaly, there is information included
+/// information from the `.dol` file. Additionally, there is information included
 /// about [`__rom_copy_info`][`Dol::rom_copy_info`] and
 /// [`__bss_init_info`][`Dol::bss_init_info`] if they are available.
-pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol, PicoriError> {
+pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol> {
     let text_offset = reader.deserialize_bu32_array::<7>()?;
     let data_offset = reader.deserialize_bu32_array::<11>()?;
     let text_address = reader.deserialize_bu32_array::<7>()?;
@@ -305,22 +303,29 @@ pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol, Picor
     let entry_point = reader.deserialize_bu32()?;
     let _ = reader.deserialize_bu32_array::<7>()?;
 
-    let text_sections = izip!(text_offset.iter(), text_address.iter(), text_size.iter());
+    let text_sections = text_offset
+        .iter()
+        .zip(text_address.iter().zip(text_size.iter()))
+        .map(|(offset, (address, size))| (*offset, *address, *size));
     let text_sections = text_sections
         .enumerate()
         .map(|(i, x)| (SectionKind::Text, i, x));
 
-    let data_sections = izip!(data_offset.iter(), data_address.iter(), data_size.iter());
+    let data_sections = data_offset
+        .iter()
+        .zip(data_address.iter().zip(data_size.iter()))
+        .map(|(offset, (address, size))| (*offset, *address, *size));
     let data_sections = data_sections
         .enumerate()
         .map(|(i, x)| (SectionKind::Data, i, x));
 
-    let mut sections: Vec<Section> = chain!(text_sections, data_sections)
-        .filter(|(_, _, x)| x.1 > &0)
+    let mut sections: Vec<Section> = text_sections
+        .chain(data_sections)
+        .filter(|(_, _, x)| x.1 > 0)
         .map(|(kind, index, (offset, address, size))| {
-            Section::new(reader, kind, index, *offset, *address, *size, *size)
+            Section::new(reader, kind, index, offset, address, size, size)
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>>>()?;
 
     let init = sections.iter().find(|x| x.name == ".init");
     let rom_copy_info =
@@ -342,7 +347,7 @@ pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol, Picor
     if let Some(bss_init_info) = &bss_init_info {
         ensure!(
             bss_init_info.len() <= 3,
-            FormatError::InvalidData("invalid bss init info (too many sections)")
+            InvalidData("invalid bss init info (too many sections)")
         );
 
         let bss_sections = bss_init_info
@@ -389,7 +394,7 @@ pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol, Picor
 
 /// Serialize [`Dol`] ...
 /// TODO: Implement this
-pub fn to_bytes(_dol: &Dol) -> Result<Vec<u8>, PicoriError> {
+pub fn to_bytes(_dol: &Dol) -> Result<Vec<u8>> {
     unimplemented!("picori::format::dol::to_bytes");
 }
 
@@ -423,7 +428,7 @@ impl Dol {
     /// convenience function, it is equivalent to calling [`Dol::from_bytes`]
     /// with similar arguments.
     #[inline]
-    pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol, PicoriError> {
+    pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol> {
         from_bytes(reader)
     }
 }

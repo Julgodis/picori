@@ -84,7 +84,7 @@ fn parse_line(line: &str) -> Result<Data, Error> {
                 version,
                 value: Value::Reserved(),
             }),
-            _ => unimplemented!("invalid data"),
+            _ => unreachable!(),
         }
     } else {
         let unicode = parse_unicode(before[1])?;
@@ -106,7 +106,7 @@ fn parse_line(line: &str) -> Result<Data, Error> {
                 value: Value::Unicode2(unicode[0], unicode[1]),
             })
         } else {
-            unimplemented!("invalid data");
+            unreachable!()
         }
     }
 }

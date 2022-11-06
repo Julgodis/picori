@@ -10,28 +10,29 @@
 //!
 //! ## References
 //!
-//! Implementation of the decompression algorithm is based
-//! on compression specification <http://www.amnoid.de/gc/yaz0.txt> by amnoid.
+//! [Yaz0](<http://www.amnoid.de/gc/yaz0.txt) - Implementation of the decompression algorithm is based
+//! on specification and format description by Amnoid.
 
 use std::io::SeekFrom;
 
-use crate::helper::error::{ensure, CompressionError, PicoriError};
-use crate::helper::{Deserializer, Seeker};
+use crate::error::DecompressionProblem::*;
+use crate::helper::{ensure, Deserializer, Seeker};
+use crate::Result;
 
 pub struct Header {
-    pub magic: u32,
-    pub decompressed_size: u32,
-    pub reserved0: u32,
-    pub reserved1: u32,
+    magic: u32,
+    decompressed_size: u32,
+    _reserved0: u32,
+    _reserved1: u32,
 }
 
 impl Header {
-    pub fn from_bytes<D: Deserializer>(input: &mut D) -> Result<Header, PicoriError> {
+    pub fn from_bytes<D: Deserializer>(input: &mut D) -> Result<Header> {
         Ok(Header {
             magic: input.deserialize_bu32()?,
             decompressed_size: input.deserialize_bu32()?,
-            reserved0: input.deserialize_bu32()?,
-            reserved1: input.deserialize_bu32()?,
+            _reserved0: input.deserialize_bu32()?,
+            _reserved1: input.deserialize_bu32()?,
         })
     }
 
@@ -39,7 +40,7 @@ impl Header {
 }
 
 pub fn is_compressed<D: Deserializer + Seeker>(input: &mut D) -> bool {
-    let mut check = || -> Result<bool, PicoriError> {
+    let mut check = || -> Result<bool> {
         let base = input.position()?;
         let is_compressed = Header::from_bytes(input).map(|header| header.is_valid());
         input.seek(SeekFrom::Start(base))?;
@@ -49,9 +50,9 @@ pub fn is_compressed<D: Deserializer + Seeker>(input: &mut D) -> bool {
     check().unwrap_or(false)
 }
 
-pub fn decompress<D: Deserializer + Seeker>(input: &mut D) -> Result<Vec<u8>, PicoriError> {
+pub fn decompress<D: Deserializer + Seeker>(input: &mut D) -> Result<Vec<u8>> {
     let header = Header::from_bytes(input)?;
-    ensure!(header.is_valid(), CompressionError::InvalidHeader());
+    ensure!(header.is_valid(), InvalidHeader("invalid yaz0 header"));
 
     let current = input.position()?;
     input.seek(SeekFrom::End(0))?;
@@ -66,12 +67,12 @@ pub fn decompress<D: Deserializer + Seeker>(input: &mut D) -> Result<Vec<u8>, Pi
     Ok(dest)
 }
 
-pub fn decompress_to_buffer(dest: &mut [u8], source: &[u8]) -> Result<(), PicoriError> {
+pub fn decompress_to_buffer(dest: &mut [u8], source: &[u8]) -> Result<()> {
     let mut i = 0;
     let mut j = 0;
 
     loop {
-        ensure!(i < source.len(), CompressionError::InvalidData());
+        ensure!(i < source.len(), UnexpectedEndOfInput);
         let code = source[i];
         i += 1;
 
@@ -81,12 +82,12 @@ pub fn decompress_to_buffer(dest: &mut [u8], source: &[u8]) -> Result<(), Picori
             }
 
             if (code & (0x80 >> k)) != 0 {
-                ensure!(i < source.len(), CompressionError::InvalidData());
+                ensure!(i < source.len(), UnexpectedEndOfInput);
                 dest[j] = source[i];
                 i += 1;
                 j += 1;
             } else {
-                ensure!(i + 1 < source.len(), CompressionError::InvalidData());
+                ensure!(i + 1 < source.len(), UnexpectedEndOfInput);
                 let byte0 = source[i] as usize;
                 let byte1 = source[i + 1] as usize;
                 i += 2;
@@ -96,7 +97,7 @@ pub fn decompress_to_buffer(dest: &mut [u8], source: &[u8]) -> Result<(), Picori
 
                 let mut length = a;
                 if length == 0 {
-                    ensure!(i < source.len(), CompressionError::InvalidData());
+                    ensure!(i < source.len(), UnexpectedEndOfInput);
                     length = source[i] as usize + 0x12;
                     i += 1;
                 } else {
@@ -104,11 +105,8 @@ pub fn decompress_to_buffer(dest: &mut [u8], source: &[u8]) -> Result<(), Picori
                 }
 
                 let offset = ((b << 8) | byte1) + 1;
-                ensure!(offset >= j, CompressionError::InvalidData());
-                ensure!(
-                    j - offset + length < dest.len(),
-                    CompressionError::InvalidData()
-                );
+                ensure!(offset >= j, UnexpectedEndOfInput);
+                ensure!(j - offset + length < dest.len(), UnexpectedEndOfInput);
                 for _ in 0..length {
                     dest[j] = dest[j - offset];
                     j += 1;

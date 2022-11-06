@@ -1,10 +1,10 @@
 use crate::helper::{Deserializer, Seeker};
-use crate::PicoriError;
+use crate::Result;
 
 pub struct Rel {}
 
 impl Rel {
-    pub fn from_bytes<D: Deserializer + Seeker>(_reader: &mut D) -> Result<Self, PicoriError> {
+    pub fn from_bytes<D: Deserializer + Seeker>(_reader: &mut D) -> Result<Self> {
         // let module = reader.read_bu32()?;
         // let _next = reader.read_bu32()?; // should be 0, used at runtime
         // let _prev = reader.read_bu32()?; // should be 0, used at runtime
@@ -52,6 +52,6 @@ impl Rel {
     }
 }
 
-pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Rel, PicoriError> {
+pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Rel> {
     Rel::from_bytes(reader)
 }

@@ -9,9 +9,15 @@
 //! - [CISO - Compact ISO (WIB)][`ciso`]
 //! - [ELF - Executable and Linkable Format][`elf`]
 
+#[cfg(feature = "ciso")]
 pub mod ciso;
+#[cfg(feature = "dol")]
 pub mod dol;
+#[cfg(feature = "elf")]
 pub mod elf;
-pub mod gcm;
+#[cfg(feature = "rarc")]
 pub mod rarc;
+#[cfg(feature = "rel")]
 pub mod rel;
+#[cfg(feature = "gcm")]
+pub mod gcm;

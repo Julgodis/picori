@@ -7,9 +7,9 @@
 use std::borrow::Borrow;
 use std::marker::PhantomData;
 
-use crate::helper::error::StringEncodingError::*;
+use crate::error::DecodingProblem::*;
 use crate::helper::DeserializableStringEncoding;
-use crate::PicoriError;
+use crate::Result;
 
 pub struct JisX0201Decoder<'x, I>
 where
@@ -54,7 +54,7 @@ where
     I: IntoIterator,
     I::Item: Borrow<u8> + Sized,
 {
-    type Item = Result<char, PicoriError>;
+    type Item = Result<char>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(byte) = self.iter.next() {
@@ -80,7 +80,7 @@ impl JisX0201 {
         JisX0201Decoder::new(iter)
     }
 
-    pub fn all<I>(iter: I) -> Result<String, PicoriError>
+    pub fn all<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
         I::Item: Borrow<u8> + Sized,
@@ -88,7 +88,7 @@ impl JisX0201 {
         Self::iter(iter).collect()
     }
 
-    pub fn first<I>(iter: I) -> Result<String, PicoriError>
+    pub fn first<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
         I::Item: Borrow<u8> + Sized,
@@ -118,7 +118,7 @@ where
 }
 
 impl DeserializableStringEncoding for JisX0201 {
-    fn deserialize_str<I>(iter: I) -> Result<String, PicoriError>
+    fn deserialize_str<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
         I::Item: Borrow<u8> + Sized,

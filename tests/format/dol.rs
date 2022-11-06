@@ -46,9 +46,9 @@ mod tests {
             dol.extend_from_slice(&size.to_be_bytes());
         }
 
-        dol.extend_from_slice(&0x1ABBCCDDu32.to_be_bytes());
-        dol.extend_from_slice(&0x2ABBCCDDu32.to_be_bytes());
-        dol.extend_from_slice(&0x3ABBCCDDu32.to_be_bytes());
+        dol.extend_from_slice(&0x19876543_u32.to_be_bytes());
+        dol.extend_from_slice(&0x29876543_u32.to_be_bytes());
+        dol.extend_from_slice(&0x39876543_u32.to_be_bytes());
 
         dol.extend_from_slice(&[
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -63,10 +63,10 @@ mod tests {
         assert_eq!(dol.header.data_offset, data_offset);
         assert_eq!(dol.header.data_address, data_address);
         assert_eq!(dol.header.data_size, data_size);
-        assert_eq!(dol.header.bss_address, 0x1ABBCCDD);
-        assert_eq!(dol.header.bss_size, 0x2ABBCCDD);
-        assert_eq!(dol.header.entry_point, 0x3ABBCCDD);
-        assert_eq!(dol.entry_point(), 0x3ABBCCDD);
+        assert_eq!(dol.header.bss_address, 0x19876543);
+        assert_eq!(dol.header.bss_size, 0x29876543);
+        assert_eq!(dol.header.entry_point, 0x39876543);
+        assert_eq!(dol.entry_point(), 0x39876543);
     }
 
     #[test]

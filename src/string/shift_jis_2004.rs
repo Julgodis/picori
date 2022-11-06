@@ -35,15 +35,15 @@
 //! - [日本の文字コード](http://www.asahi-net.or.jp/~ax2s-kmtn/character/japan.html)
 //! - [JIS基本漢字](http://www.asahi-net.or.jp/~ax2s-kmtn/ref/jisx0208.html)
 //! - [JIS拡張漢字](http://www.asahi-net.or.jp/~ax2s-kmtn/ref/jisx0213/index.html)
-//! - [Shift JIS Kanij Table](http://www.rikai.com/library/kanjitables/kanji_codes.sjis.shtml)
+//! - [Shift JIS Kanji Table](http://www.rikai.com/library/kanjitables/kanji_codes.sjis.shtml)
 
 use std::borrow::Borrow;
 use std::marker::PhantomData;
 
-use crate::helper::DeserializableStringEncoding;
+use crate::error::DecodingProblem::*;
+use crate::helper::{DeserializableStringEncoding, ensure};
 use crate::string::jis_x_0201::JisX0201Decoder;
-use crate::StringEncodingError::*;
-use crate::{ensure, PicoriError};
+use crate::Result;
 
 mod internal {
     include!(concat!(env!("OUT_DIR"), "/shift_jis_2004.rs"));
@@ -78,7 +78,7 @@ where
         }
     }
 
-    fn decode_next(iter: &mut <I as IntoIterator>::IntoIter) -> Result<Next, PicoriError> {
+    fn decode_next(iter: &mut <I as IntoIterator>::IntoIter) -> Result<Next> {
         let byte = iter.next();
         if let Some(byte) = byte {
             let byte = *byte.borrow();
@@ -122,7 +122,7 @@ where
     I: IntoIterator,
     I::Item: Borrow<u8> + Sized,
 {
-    type Item = Result<char, PicoriError>;
+    type Item = Result<char>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(value) = self.buffered {
@@ -153,7 +153,7 @@ impl ShiftJis2004 {
         Decoder::new(iter)
     }
 
-    pub fn all<I>(iter: I) -> Result<String, PicoriError>
+    pub fn all<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
         I::Item: Borrow<u8> + Sized,
@@ -161,7 +161,7 @@ impl ShiftJis2004 {
         Self::iter(iter).collect()
     }
 
-    pub fn first<I>(iter: I) -> Result<String, PicoriError>
+    pub fn first<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
         I::Item: Borrow<u8> + Sized,
@@ -191,7 +191,7 @@ where
 }
 
 impl DeserializableStringEncoding for ShiftJis2004 {
-    fn deserialize_str<I>(iter: I) -> Result<String, PicoriError>
+    fn deserialize_str<I>(iter: I) -> Result<String>
     where
         I: IntoIterator,
         I::Item: Borrow<u8> + Sized,

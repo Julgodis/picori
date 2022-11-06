@@ -1,15 +1,20 @@
 pub mod alignment;
-pub mod read_extension;
+mod endian;
+mod error;
 pub mod take_last_n;
-pub mod error;
-pub mod endian;
 
-mod deserializer;
 mod deserializable;
+mod deserializer;
 mod reader;
 mod seeker;
 
-pub use deserializer::*;
 pub use deserializable::*;
+pub use deserializer::*;
+pub use endian::*;
+pub(crate) use error::ensure;
+pub use error::{
+    CompressionProblem, DecodingProblem, DecompressionProblem, DeserializeProblem, EncodingProblem,
+    Error, Result, SerializeProblem,
+};
 pub use reader::*;
 pub use seeker::*;

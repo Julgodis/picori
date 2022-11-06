@@ -1,10 +1,10 @@
-use std::result::Result;
-
-use thiserror::Error;
-
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
-pub enum FormatError {
+pub enum SerializeProblem {}
+
+#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+pub enum DeserializeProblem {
     #[error("invalid header: {0}")]
     InvalidHeader(&'static str),
 
@@ -15,24 +15,30 @@ pub enum FormatError {
     UnsupportedVersion(usize),
 }
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
-pub enum CompressionError {
+pub enum CompressionProblem {}
+
+#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+pub enum DecompressionProblem {
     #[error("invalid header")]
-    InvalidHeader(),
+    InvalidHeader(&'static str),
 
     #[error("invalid data")]
-    InvalidData(),
+    InvalidData(&'static str),
+
+    #[error("unexpected EOF")]
+    UnexpectedEndOfInput,
 }
 
-#[derive(Error, Debug)]
-pub enum StringEncodingError {
-    #[error("unable to decode: {0}")]
-    UnableToDecode(&'static str),
+#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+pub enum EncodingProblem {}
 
-    #[error("unable to encode: {0}")]
-    UnableToEncode(&'static str),
-
+#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+pub enum DecodingProblem {
     #[error("invalid code point: {0}")]
     InvalidCodePoint(usize),
 
@@ -43,29 +49,29 @@ pub enum StringEncodingError {
     UnexpectedEndOfInput,
 }
 
-impl StringEncodingError {
-    pub fn new<X>(other: X) -> Self
-    where
-        X: Into<StringEncodingError>,
-    {
-        other.into()
-    }
-}
-
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
-pub enum PicoriError {
+pub enum Error {
     #[error("integer overflow error")]
     IntegerOverflow(),
 
-    #[error("format error: {0}")]
-    Format(#[from] FormatError),
+    #[error("serialize: {0}")]
+    Serialize(#[from] SerializeProblem),
 
-    #[error("compression error: {0}")]
-    Compression(#[from] CompressionError),
+    #[error("deserialize: {0}")]
+    Deserialize(#[from] DeserializeProblem),
 
-    #[error("string encoding error: {0}")]
-    StringEncodingError(#[from] StringEncodingError),
+    #[error("compression: {0}")]
+    Compression(#[from] CompressionProblem),
+
+    #[error("decompression: {0}")]
+    Decompression(#[from] DecompressionProblem),
+
+    #[error("encoding: {0}")]
+    Encoding(#[from] EncodingProblem),
+
+    #[error("decoding: {0}")]
+    Decoding(#[from] DecodingProblem),
 
     #[error("io error")]
     IoError(#[from] std::io::Error),
@@ -74,14 +80,7 @@ pub enum PicoriError {
     Utf8Error(#[from] std::str::Utf8Error),
 }
 
-impl PicoriError {
-    pub fn new<T>(error: T) -> Self
-    where
-        T: Into<PicoriError>,
-    {
-        error.into()
-    }
-}
+pub type Result<T> = std::result::Result<T, Error>;
 
 macro_rules! ensure {
     ($cond:expr, $err:expr) => {

@@ -1,21 +1,18 @@
 <p align="center">
   <a href="https://">
     <picture>
-      <img src="assets/picori_logo_512.png" height="128">
+      <img src="assets/images/picori_logo_512.png" height="128">
     </picture>
     <h1 align="center">picori</h1>
   </a>
 </p>
 
-[![crates.io](https://img.shields.io/crates/v/test1)](https://crates.io/crates/test1)
-[![docs.rs](https://docs.rs/test1/badge.svg)](https://docs.rs/druid/)
-[![license](https://img.shields.io/crates/l/druid)](https://github.com/linebender/druid/blob/master/LICENSE)
+[![crates.io](https://img.shields.io/crates/v/picori)](https://crates.io/crates/picori)
+[![docs.rs](https://docs.rs/picori/badge.svg)](https://docs.rs/picori/)
 [![coverage](/../coverage/coverage/badges/flat.svg)](https://julgodis.github.io/picori/coverage/)
+[![license](https://img.shields.io/crates/l/picori)](https://github.com/Julgodis/picori/LICENSE)
 
-Picori is a library for building modding tools and decompliation tools for
-GameCube and Wii games. It includes support to serialize and deserialize many
-Nintendo specific development and game formats, common compression algorithms, string
-encodings and the ability to demangle C++ symbols.
+Picori is a library for building modding tools and decompilation tools for GameCube and Wii games. It includes support to serialize and deserialize many Nintendo-specific development and game formats, common compression algorithms, string encodings, and the ability to demangle C++ symbols.
 
 ## Formats
 
@@ -31,10 +28,7 @@ Picori supports the following formats:
 In the future adding support for more formats is planned.
 
 [^note-elf]:
-    ELF is not a specific format used by either GameCube or Wii,
-    but no known compiler outputs DOL files direct (and for good reasons),
-    instead they produce ELF files. Support for ELF (specific to GameCube and
-    Wii) are useful.
+    ELF is not a specific format used by either GameCube or Wii, but no known compiler outputs DOL files direct (and for good reasons), instead they produce ELF files. Support for ELF (specific to GameCube and Wii) will be very useful.
 
 ## Compression
 
@@ -45,9 +39,7 @@ Picori supports the following compression algorithms:
 
 ## C++ Demangler
 
-Picori also includes a C++ demangler for MWCC (Metrowerks CodeWarrior
-Compiler) that was probably include and shipped with the SDK and used for
-GameCube development.
+Picori also includes a C++ demangler for MWCC (Metrowerks CodeWarrior Compiler) that was probably included and shipped with the SDK and used for GameCube development.
 
 ## Examples
 

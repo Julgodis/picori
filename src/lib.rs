@@ -1,4 +1,4 @@
-//! Picori is a library for building modding tools and decompliation tools for
+//! Picori is a library for building modding tools and decompilation tools for
 //! GameCube and Wii games. It includes support to serialize and deserialize
 //! many Nintendo specific development and game formats, common compression
 //! algorithms, string encodings and the ability to demangle C++ symbols.
@@ -44,12 +44,22 @@
 #![allow(clippy::uninit_vec)]
 #![warn(warnings, missing_docs)]
 
+#[cfg(feature = "compression")]
 pub mod compression;
+#[cfg(feature = "demangle")]
 pub mod demangle;
+#[cfg(feature = "file")]
 pub mod format;
+#[cfg(feature = "encoding")]
 pub mod string;
 
 mod helper;
 
-pub use helper::error::*;
+pub use helper::{Error, Result};
 
+mod error {
+    pub use super::helper::{
+        CompressionProblem, DecodingProblem, DecompressionProblem, DeserializeProblem,
+        EncodingProblem, SerializeProblem,
+    };
+}

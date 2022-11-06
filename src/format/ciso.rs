@@ -8,11 +8,11 @@
 //!
 //! TODO: Add examples
 
-use std::io::{Read, Seek, SeekFrom, Write};
-use std::result::Result;
+use std::io::{SeekFrom, Write};
 
-use crate::helper::error::{FormatError, PicoriError};
+use crate::error::DeserializeProblem::*;
 use crate::helper::{Deserializer, Seeker};
+use crate::{Error, Result};
 
 /// CISO magic number representing the four characters "CISO".
 static MAGIC: u32 = 0x4F534943;
@@ -24,13 +24,13 @@ struct Header {
 }
 
 impl Header {
-    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self, PicoriError> {
+    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self> {
         let magic = input.deserialize_bu32()?;
         let block_size = input.deserialize_bu32()? as usize;
         if magic != MAGIC {
-            return Err(FormatError::InvalidHeader("invalid magic").into());
+            return Err(InvalidHeader("invalid magic").into());
         } else if block_size == 0 || block_size > 0x800_0000 {
-            return Err(FormatError::InvalidHeader("invalid block size").into());
+            return Err(InvalidHeader("invalid block size").into());
         }
 
         let block_map = input.deserialize_u8_array::<{ 0x8000 - 8 }>()?;
@@ -50,7 +50,7 @@ impl Header {
 
             Ok(Header { block_size, blocks })
         } else {
-            Err(FormatError::InvalidHeader("invalid block map").into())
+            Err(InvalidHeader("invalid block map").into())
         }
     }
 }
@@ -62,7 +62,7 @@ pub struct CisoDecoder<'x, D: Deserializer + Seeker> {
 }
 
 impl<'x, D: Deserializer + Seeker> CisoDecoder<'x, D> {
-    pub fn new(reader: &'x mut D) -> Result<Self, PicoriError> {
+    pub fn new(reader: &'x mut D) -> Result<Self> {
         let header = Header::deserialize(reader)?;
         let data_offset = reader.position()?;
         Ok(Self {
@@ -76,14 +76,14 @@ impl<'x, D: Deserializer + Seeker> CisoDecoder<'x, D> {
 
     pub fn total_size(&self) -> usize { self.header.blocks.len() * self.header.block_size }
 
-    pub fn decode_blocks<F, E>(&mut self, mut func: F) -> Result<(), E>
+    pub fn decode_blocks<F, E>(&mut self, mut func: F) -> std::result::Result<(), E>
     where
-        F: FnMut(usize, &[u8]) -> Result<(), E>,
+        F: FnMut(usize, &[u8]) -> std::result::Result<(), E>,
         E: From<std::io::Error>,
     {
         match self.reader.seek(SeekFrom::Start(self.data_offset)) {
             Ok(_) => (),
-            Err(PicoriError::IoError(e)) => return Err(e.into()),
+            Err(Error::IoError(e)) => return Err(e.into()),
             Err(e) => return Err(std::io::Error::new(std::io::ErrorKind::Other, e).into()),
         }
 
@@ -99,7 +99,7 @@ impl<'x, D: Deserializer + Seeker> CisoDecoder<'x, D> {
                     true => {
                         match self.reader.read_into_buffer(&mut data_block) {
                             Ok(_) => (),
-                            Err(PicoriError::IoError(e)) => return Err(e.into()),
+                            Err(Error::IoError(e)) => return Err(e.into()),
                             Err(e) => {
                                 return Err(std::io::Error::new(std::io::ErrorKind::Other, e).into())
                             },
@@ -115,7 +115,7 @@ impl<'x, D: Deserializer + Seeker> CisoDecoder<'x, D> {
             })
     }
 
-    pub fn decode<Writer>(&mut self, writer: &mut Writer) -> Result<(), PicoriError>
+    pub fn decode<Writer>(&mut self, writer: &mut Writer) -> Result<()>
     where
         Writer: Write,
     {

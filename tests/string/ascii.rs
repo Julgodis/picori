@@ -23,7 +23,7 @@ mod tests {
     #[test]
     fn first() {
         assert_eq!(&Ascii::first(b"abc\0def").unwrap()[..], "abc");
-        assert!(&Ascii::first(b"abc\xffdef").is_err());
+        assert!(&Ascii::first(b"abc\xff def").is_err());
     }
 
     #[test]
