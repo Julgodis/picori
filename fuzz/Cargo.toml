@@ -23,3 +23,15 @@ name = "dol"
 path = "fuzz_targets/dol.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "shift_jis"
+path = "fuzz_targets/shift_jis.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "ascii"
+path = "fuzz_targets/ascii.rs"
+test = false
+doc = false

@@ -8,7 +8,7 @@ use crate::error::{ensure, FormatError, PicoriError};
 use crate::helper::read_extension::ReadExtension;
 use crate::string::ascii::{AsciiEncoding, AsciiEncodingTrait};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Boot {
     pub console_id: u8,              // 0x000 0x001
     pub game_code: [u8; 2],          // 0x002 0x002
@@ -137,7 +137,7 @@ impl From<usize> for Bi2Index {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Bi2 {
     pub values: HashMap<Bi2Index, u32>,
 }
@@ -179,7 +179,7 @@ impl Bi2 {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Apploader {
     pub date:         String,
     pub entrypoint:   u32,
@@ -221,7 +221,7 @@ impl Apploader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MainExecutable {
     pub data: Vec<u8>,
 }

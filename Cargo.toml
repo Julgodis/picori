@@ -3,15 +3,15 @@ name = "picori"
 version = "0.1.1"
 edition = "2021"
 license = "MIT"
+repository = "https://github.com/Julgodis/picori"
+
 readme = "README.md"
 authors = ["Julgodis <self@julgodis.xyz>"]
-description = "Library for decompliation of GameCube/Wii games"
-keywords = ["dol", "rel", "rarc", "yaz0", "yay0", "gcm", "decompilation"]
-categories = ["encoding", "compression", "parsing"]
+description = "Library building modding and decomplication tools for GameCube/Wii games"
+keywords = ["dol", "rel", "rarc", "yaz0", "gamecube"]
+categories = ["encoding", "compression", "parsing", "modding", "deomp"]
 publish = false
 build = "scripts/build.rs"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 thiserror = "1.0"

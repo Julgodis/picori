@@ -27,6 +27,12 @@ pub enum StringEncodingError {
 
     #[error("unable to encode: {0}")]
     UnableToEncode(&'static str),
+
+    #[error("invalid codepoint: {0}")]
+    InvalidCodepoint(usize),
+
+    #[error("missing data: {0}")]
+    MissingData(&'static str),
 }
 
 impl StringEncodingError {
@@ -34,7 +40,7 @@ impl StringEncodingError {
     where
         X: Into<StringEncodingError>,
     {
-        return other.into();
+        other.into()
     }
 }
 

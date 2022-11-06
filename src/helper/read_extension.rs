@@ -1,7 +1,9 @@
-use std::{io::Read, mem::MaybeUninit};
+use std::io::Read;
+use std::mem::MaybeUninit;
 
-use crate::{error::PicoriError, endian::{LittleEndian, BigEndian, EndianAgnostic, NativeEndian}, string::StringEncoding};
-
+use crate::endian::{BigEndian, EndianAgnostic, LittleEndian, NativeEndian};
+use crate::error::PicoriError;
+use crate::string::StringEncoding;
 
 pub trait ReadExtensionU8: Read {
     fn read_eu8<T: EndianAgnostic>(&mut self) -> Result<u8, PicoriError> {
@@ -65,7 +67,8 @@ pub trait ReadArrayExtensionU32: Read {
     ) -> Result<[u32; S], PicoriError> {
         let mut storage = MaybeUninit::<[u32; S]>::uninit();
         let reference = unsafe { &mut *storage.as_mut_ptr() };
-        let buf = unsafe { std::slice::from_raw_parts_mut(reference.as_mut_ptr() as *mut u8, 4 * S) };
+        let buf =
+            unsafe { std::slice::from_raw_parts_mut(reference.as_mut_ptr() as *mut u8, 4 * S) };
         self.read_exact(buf)?;
 
         let storage = unsafe { &mut storage.assume_init() };
@@ -91,12 +94,11 @@ pub trait ReadArrayExtensionU32: Read {
 }
 
 pub trait ReadStringExtension: Read {
-    fn read_string<const L: usize, T: StringEncoding>(
-        &mut self,
-    ) -> Result<String, PicoriError> {
-        let mut buf = unsafe { MaybeUninit::<[u8; L]>::uninit().assume_init() };
-        self.read_exact(&mut buf)?;
-        let str = T::decode_bytes(&buf)?;
+    fn read_string<const L: usize, T: StringEncoding>(&mut self) -> Result<String, PicoriError> {
+        let mut buf = MaybeUninit::<[u8; L]>::uninit();
+        let slice = unsafe { &mut *buf.as_mut_ptr() };
+        self.read_exact(slice)?;
+        let str = T::decode_bytes(unsafe { &buf.assume_init() })?;
         Ok(str)
     }
 }

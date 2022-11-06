@@ -68,8 +68,8 @@ where
     input.seek(SeekFrom::Start(current))?;
 
     // TODO: Use uninitialized memory
-    let mut dest = vec![0 as u8; header.decompressed_size as usize];
-    let mut source = vec![0 as u8; compressed_size as usize];
+    let mut dest = vec![0_u8; header.decompressed_size as usize];
+    let mut source = vec![0_u8; compressed_size as usize];
     input.read_exact(source.as_mut_slice())?;
     decompress_to_buffer(dest.as_mut_slice(), source.as_slice())?;
 
@@ -97,14 +97,14 @@ pub fn decompress_to_buffer(dest: &mut [u8], source: &[u8]) -> Result<(), Picori
                 j += 1;
             } else {
                 ensure!(i + 1 < source.len(), CompressionError::InvalidData());
-                let byte0 = source[i + 0] as usize;
+                let byte0 = source[i] as usize;
                 let byte1 = source[i + 1] as usize;
                 i += 2;
 
                 let a = (byte0 >> 4) & 0x0F;
-                let b = (byte0 >> 0) & 0x0F;
+                let b = byte0 & 0x0F;
 
-                let mut length = a as usize;
+                let mut length = a;
                 if length == 0 {
                     ensure!(i < source.len(), CompressionError::InvalidData());
                     length = source[i] as usize + 0x12;

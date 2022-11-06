@@ -1,7 +1,7 @@
 //! Picori is a library for building modding tools and decompliation tools for
-//! GameCube and Wii games. It includes support for encoding and decoding many
-//! of Nintendos file formats, common compression algorithms, non-english string
-//! encodings and the ability to demangle C++ symbols.
+//! GameCube and Wii games. It includes support to serialize and deserialize
+//! many Nintendo specific development and game formats, common compression
+//! algorithms, string encodings and the ability to demangle C++ symbols.
 //!
 //! # Formats
 //!
@@ -30,17 +30,20 @@
 //!
 //! # C++ Demangler
 //!
-//! Picori also includes a [C++ demangler][`demangle::mwcc`] for MWCC (Metrowerks CodeWarrior
-//! Compiler) that was probably include and shipped with the SDK and used for
-//! GameCube development.
-//! 
+//! Picori also includes a [C++ demangler][`demangle::mwcc`] for MWCC
+//! (Metrowerks CodeWarrior Compiler) that was probably include and shipped with
+//! the SDK and used for GameCube development.
+//!
 //! # Examples
-//! 
+//!
 //! TODO: Add examples
-//! 
-
 
 #![feature(try_trait_v2)]
+
+// TODO: These should be re-enabled again once I have found a suitable solution 
+// for the create uninitialized storage and write data to it. I don't want to
+// first zero-fill the storage first...
+#![allow(clippy::uninit_vec, clippy::unused_io_amount)]
 
 pub mod compression;
 pub mod demangle;

@@ -26,7 +26,6 @@ mod dol_tests {
     fn header() {
         let mut reader = SliceReader::new(&GZLE01);
         let result = dol::from_bytes(&mut reader);
-        assert!(result.is_ok());
 
         let text_offset: [u32; 7] = [
             0x00000100, 0x00002620, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -63,7 +62,6 @@ mod dol_tests {
     fn sections() {
         let mut reader = SliceReader::new(&GZLE01);
         let result = dol::from_bytes(&mut reader);
-        assert!(result.is_ok());
 
         let dol = result.unwrap();
         let sections = &dol.sections;

@@ -32,6 +32,7 @@ use std::result::Result;
 
 use itertools::{chain, izip};
 
+use crate::ensure;
 use crate::error::{FormatError, PicoriError};
 use crate::helper::alignment::AlignPowerOfTwo;
 use crate::helper::read_extension::ReadExtension;
@@ -58,11 +59,11 @@ pub enum SectionKind {
     /// Text section, e.g. `.init`, `.text`, etc.
     Text,
 
-    // Data section, e.g. `extab_`, `extabindex_`, `.ctors`, `.dtors`, `.rodata`, `.data`,
-    // `.sdata`, `.sdata2`, etc.
+    /// Data section, e.g. `extab_`, `extabindex_`, `.ctors`, `.dtors`,
+    /// `.rodata`, `.data`, `.sdata`, `.sdata2`, etc.
     Data,
 
-    // BSS section, e.g., `.bss`, `.sbss`, `.sbss2`, etc.
+    /// BSS section, e.g., `.bss`, `.sbss`, `.sbss2`, etc.
     Bss,
 }
 
@@ -160,11 +161,7 @@ impl RomCopyInfo {
             })
         };
 
-        if let Err(_) = rom_copy_info {
-            Err(FormatError::InvalidData("invalid RomCopyInfo").into())
-        } else {
-            Ok(rom_copy_info.unwrap())
-        }
+        rom_copy_info.map_err(|_| FormatError::InvalidData("invalid RomCopyInfo").into())
     }
 }
 
@@ -174,17 +171,13 @@ impl BssInitInfo {
     where
         Reader: ReadExtension,
     {
-        let rom_copy_info: Result<_, PicoriError> = {
+        let bss_init_info: Result<_, PicoriError> = {
             let ram_address = reader.read_bu32()?;
             let size = reader.read_bu32()?;
             Ok(BssInitInfo { ram_address, size })
         };
 
-        if let Err(_) = rom_copy_info {
-            Err(FormatError::InvalidData("invalid BssInitInfo").into())
-        } else {
-            Ok(rom_copy_info.unwrap())
-        }
+        bss_init_info.map_err(|_| FormatError::InvalidData("invalid BssInitInfo").into())
     }
 }
 
@@ -195,14 +188,13 @@ fn rom_copy_info_search(data: &[u8], address: u32) -> Option<Vec<RomCopyInfo>> {
         .take_last_n(0x200)
         .windows(12)
         .map(|x| RomCopyInfo::from_bytes(&mut SliceReader::new(x)))
-        .filter(|x| x.is_ok())
-        .map(|x| x.unwrap())
+        .filter_map(|x| x.ok())
         .skip_while(|x| x.rom_address != address || x.ram_address != address)
         .step_by(12)
         .take_while(|x| x.rom_address != 0)
         .collect::<Vec<_>>();
 
-    if rom_copy_info.len() == 0 {
+    if rom_copy_info.is_empty() {
         None
     } else {
         Some(rom_copy_info)
@@ -216,14 +208,13 @@ fn bss_init_info_search(data: &[u8], address: u32) -> Option<Vec<BssInitInfo>> {
         .take_last_n(0x200)
         .windows(8)
         .map(|x| BssInitInfo::from_bytes(&mut SliceReader::new(x)))
-        .filter(|x| x.is_ok())
-        .map(|x| x.unwrap())
+        .filter_map(|x| x.ok())
         .skip_while(|x| x.ram_address != address)
         .step_by(8)
         .take_while(|x| x.ram_address != 0)
         .collect::<Vec<_>>();
 
-    if bss_init_info.len() == 0 {
+    if bss_init_info.is_empty() {
         None
     } else {
         Some(bss_init_info)
@@ -279,6 +270,15 @@ impl Section {
     where
         Reader: ReadExtension + Seek,
     {
+        ensure!(
+            size > 0,
+            FormatError::InvalidData("invalid section size (size of 0)")
+        );
+        ensure!(
+            size <= 0x2000000,
+            FormatError::InvalidData("invalid section size (too large)")
+        );
+
         let mut data = unsafe {
             let mut data = Vec::with_capacity(size as usize);
             data.set_len(size as usize);
@@ -289,12 +289,12 @@ impl Section {
         reader.read_exact(data.as_mut_slice())?;
 
         Ok(Self {
-            kind:         kind,
-            name:         section_name(kind, index),
-            address:      address,
-            size:         size,
-            aligned_size: aligned_size,
-            data:         data,
+            kind,
+            name: section_name(kind, index),
+            address,
+            size,
+            aligned_size,
+            data,
         })
     }
 }
@@ -331,22 +331,17 @@ where
         .map(|(i, x)| (SectionKind::Data, i, x));
 
     let mut sections: Vec<Section> = chain!(text_sections, data_sections)
+        .filter(|(_, _, x)| x.1 > &0 && x.2 > &0)
         .map(|(kind, index, (offset, address, size))| {
             Section::new(reader, kind, index, *offset, *address, *size, *size)
-        })
-        .filter(|section| match section {
-            Ok(section) => section.size != 0,
-            Err(_) => true, // don't skip errors here, we want to propagate them to the caller
         })
         .collect::<Result<Vec<_>, _>>()?;
 
     let init = sections.iter().find(|x| x.name == ".init");
-    let rom_copy_info = init.map_or(None, |init| {
-        rom_copy_info_search(init.data.as_slice(), init.address)
-    });
-    let bss_init_info = init.map_or(None, |init| {
-        bss_init_info_search(init.data.as_slice(), bss_address)
-    });
+    let rom_copy_info =
+        init.and_then(|init| rom_copy_info_search(init.data.as_slice(), init.address));
+    let bss_init_info =
+        init.and_then(|init| bss_init_info_search(init.data.as_slice(), bss_address));
 
     for section in sections.iter_mut() {
         section.size = rom_copy_info
@@ -385,7 +380,7 @@ where
     }
 
     Ok(Dol {
-        header:        Header {
+        header: Header {
             text_offset,
             data_offset,
             text_address,
@@ -396,9 +391,9 @@ where
             bss_size,
             entry_point,
         },
-        rom_copy_info: rom_copy_info,
-        bss_init_info: bss_init_info,
-        sections:      sections,
+        rom_copy_info,
+        bss_init_info,
+        sections,
     })
 }
 

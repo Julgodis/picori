@@ -15,7 +15,7 @@ pub enum Error {
     UnableToWriteFile(#[from] std::io::Error),
 
     #[error("utf8 error")]
-    FromUtf8Error(#[from] std::string::FromUtf8Error),
+    FromUtf8(#[from] std::string::FromUtf8Error),
 }
 
 #[derive(Debug)]
@@ -48,7 +48,7 @@ fn parse_line(line: &str) -> Result<(u32, Line), Error> {
     let before: Vec<&str> = parts[0].split(' ').filter(|s| !s.is_empty()).collect();
     let after: Vec<&str> = parts[1].split(' ').filter(|s| !s.is_empty()).collect();
     assert!(before.len() == 1 || before.len() == 2, "invalid line");
-    assert!(after.len() >= 1, "invalid line");
+    assert!(!after.is_empty(), "invalid line");
 
     let code = parse_hex(before[0])?;
     if before.len() == 1 {
@@ -121,11 +121,10 @@ static SHIFT_JIS_2004: &[u8] = include_bytes!("../assets/shift_jis_2004.txt");
 pub fn generate() -> Result<(), Error> {
     let data = String::from_utf8(SHIFT_JIS_2004.to_vec())?;
     let lookup = data
-        .replace("\t", " ")
+        .replace('\t', " ")
         .lines()
-        .filter(|x| !x.starts_with("#"))
-        .map(parse_line)
-        .flat_map(|x| x)
+        .filter(|x| !x.starts_with('#'))
+        .flat_map(parse_line)
         .collect::<HashMap<_, _>>();
 
     let dir = env::var_os("OUT_DIR").unwrap();

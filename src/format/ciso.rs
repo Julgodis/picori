@@ -79,8 +79,8 @@ where
     {
         self.reader.seek(SeekFrom::Start(self.data_offset))?;
 
-        let zero_block = vec![0 as u8; self.header.block_size];
-        let mut data_block = vec![0 as u8; self.header.block_size];
+        let zero_block = vec![0_u8; self.header.block_size];
+        let mut data_block = vec![0_u8; self.header.block_size];
         self.header
             .blocks
             .iter()
