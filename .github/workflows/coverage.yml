@@ -41,7 +41,7 @@ jobs:
           mkdir -p temp/coverage/
           cargo build --verbose
           cargo test --verbose
-          ./grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "/*" -o ./coverage/lcov.info
+          ./grcov . --binary-path ./target/debug/ -s . -t html --llvm --branch --ignore-not-existing --ignore "/*" -o ./coverage/
 
       - name: upload coverage
         env: 

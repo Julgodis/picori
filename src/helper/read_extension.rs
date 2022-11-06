@@ -1,9 +1,10 @@
+use std::error::Error;
 use std::io::Read;
 use std::mem::MaybeUninit;
 
 use crate::endian::{BigEndian, EndianAgnostic, LittleEndian, NativeEndian};
 use crate::error::PicoriError;
-use crate::string::StringEncoding;
+use crate::string::StringDecoder;
 
 pub trait ReadExtensionU8: Read {
     fn read_eu8<T: EndianAgnostic>(&mut self) -> Result<u8, PicoriError> {
@@ -94,12 +95,53 @@ pub trait ReadArrayExtensionU32: Read {
 }
 
 pub trait ReadStringExtension: Read {
-    fn read_string<const L: usize, T: StringEncoding>(&mut self) -> Result<String, PicoriError> {
+    fn read_string<const L: usize, T: StringDecoder>(&mut self) -> Result<String, PicoriError> {
         let mut buf = MaybeUninit::<[u8; L]>::uninit();
         let slice = unsafe { &mut *buf.as_mut_ptr() };
         self.read_exact(slice)?;
-        let str = T::decode_bytes(unsafe { &buf.assume_init() })?;
+        let str = T::decode_until_zero(unsafe { &buf.assume_init() })?;
         Ok(str)
+    }
+}
+
+pub trait Deserializer<'a> {
+    type Error: Error;
+
+    fn deserialize_u8(&mut self) -> Result<u8, Self::Error>;
+}
+
+pub trait Deserialize<'a>: Sized {
+    fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'a>;
+
+    fn deserialize_vector<D>(deserializer: &mut D, length: usize) -> Result<Vec<Self>, D::Error>
+    where
+        D: Deserializer<'a>,
+    {
+        let mut vec = Vec::with_capacity(length);
+        for _ in 0..length {
+            vec.push(Self::deserialize(deserializer)?);
+        }
+        Ok(vec)
+    }
+}
+
+impl<'a, Base> Deserializer<'a> for Base
+where
+    Base: Read + Sized,
+{
+    type Error = PicoriError;
+
+    fn deserialize_u8(&mut self) -> Result<u8, Self::Error> { self.read_u8() }
+}
+
+impl<'a> Deserialize<'a> for u8 {
+    fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'a>,
+    {
+        deserializer.deserialize_u8()
     }
 }
 

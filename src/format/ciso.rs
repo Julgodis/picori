@@ -73,6 +73,7 @@ where
         })
     }
 
+    /*
     pub fn decode<Writer>(&mut self, writer: &mut Writer) -> Result<(), PicoriError>
     where
         Writer: Write,
@@ -97,5 +98,6 @@ where
 
                 Ok(())
             })
-    }
+    }*/
 }
+

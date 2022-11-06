@@ -5,9 +5,12 @@
 //! - [REL - Relocatable Executable][`rel`]
 //! - [GCM - GameCube Master Disc][`gcm`]
 //! - [RARC - Nintendo RARC][`rarc`]
-//! - [CISO - Compact ISO (WIB])[`ciso`]
+//! - [CISO - Compact ISO (WIB)][`ciso`]
 //! - [ELF - Executable and Linkable Format][`elf`]
 
 pub mod dol;
 pub mod gcm;
 pub mod ciso;
+pub mod rel;
+pub mod rarc;
+pub mod elf;

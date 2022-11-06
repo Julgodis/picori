@@ -6,7 +6,8 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{ensure, FormatError, PicoriError};
 use crate::helper::read_extension::ReadExtension;
-use crate::string::ascii::{AsciiEncoding, AsciiEncodingTrait};
+use crate::string::ascii::AsciiDecoder;
+use crate::string::StringDecoder;
 
 #[derive(Debug, Default)]
 pub struct Boot {
@@ -46,7 +47,7 @@ impl Boot {
         let streaming_buffer_size = input.read_bu8()?;
         let reserved0 = input.read_bu8_array::<0x12>()?;
         let magic = input.read_bu32()?;
-        let game_name = input.read_string::<0x3E0, AsciiEncoding>()?;
+        let game_name = input.read_string::<0x3E0, AsciiDecoder>()?;
         let debug_monitor_offset = input.read_bu32()?;
         let debug_monitor_address = input.read_bu32()?;
         let reserved1 = input.read_bu8_array::<0x18>()?;
@@ -191,7 +192,7 @@ pub struct Apploader {
 
 impl Apploader {
     pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
-        let date = input.read_string::<0x10, AsciiEncoding>()?;
+        let date = input.read_string::<0x10, AsciiDecoder>()?;
         let entrypoint = input.read_bu32()?;
         let size = input.read_bu32()?;
         let trailer_size = input.read_bu32()?;
@@ -229,19 +230,27 @@ pub struct MainExecutable {
 impl MainExecutable {
     pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
         let base = input.stream_position()?;
-        let text_offsets = input.read_bu32_array::<{ 4 * 7 }>()?;
-        let data_offsets = input.read_bu32_array::<{ 4 * 11 }>()?;
-        let text_sizes = input.read_bu32_array::<{ 4 * 7 }>()?;
-        let data_sizes = input.read_bu32_array::<{ 4 * 11 }>()?;
+        let text_offsets = input.read_bu32_array::<7>()?;
+        let data_offsets = input.read_bu32_array::<11>()?;
+        let _ = input.read_bu32_array::<7>()?;
+        let _ = input.read_bu32_array::<11>()?;
+        let text_sizes = input.read_bu32_array::<7>()?;
+        let data_sizes = input.read_bu32_array::<11>()?;
 
         let text_iter = text_offsets
             .iter()
             .zip(text_sizes.iter())
+            .inspect(|(offset, size)| {
+                println!("Text: offset: 0x{:08X}, size: 0x{:08X}", offset, size)
+            })
             .map(|(offset, size)| offset + size);
 
         let data_iter = data_offsets
             .iter()
             .zip(data_sizes.iter())
+            .inspect(|(offset, size)| {
+                println!("Data: offset: 0x{:08X}, size: 0x{:08X}", offset, size)
+            })
             .map(|(offset, size)| offset + size);
 
         let total_size = text_iter
@@ -355,13 +364,13 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
         for (i, entry) in entries.iter().enumerate() {
             self.entries.push(match entry {
                 _FstEntry::File { name, offset, size } => FSTEntry::File {
-                    name:   String::from_ascii(&string_table[*name as usize..])?,
+                    name:   AsciiDecoder::decode_until_zero(&string_table[*name as usize..])?,
                     index:  i as u32,
                     offset: *offset,
                     size:   *size,
                 },
                 _FstEntry::Directory { name, parent, end } => FSTEntry::Directory {
-                    name:   String::from_ascii(&string_table[*name as usize..])?,
+                    name:   AsciiDecoder::decode_until_zero(&string_table[*name as usize..])?,
                     parent: *parent,
                     begin:  (i + 1) as u32,
                     end:    *end - 1,

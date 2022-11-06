@@ -8,6 +8,9 @@ pub enum FormatError {
 
     #[error("invalid data: {0}")]
     InvalidData(&'static str),
+
+    #[error("unsupported version: {0}")]
+    UnsupportedVersion(usize),
 }
 
 #[derive(Error, Debug)]
@@ -28,11 +31,14 @@ pub enum StringEncodingError {
     #[error("unable to encode: {0}")]
     UnableToEncode(&'static str),
 
-    #[error("invalid codepoint: {0}")]
-    InvalidCodepoint(usize),
+    #[error("invalid code point: {0}")]
+    InvalidCodePoint(usize),
 
-    #[error("missing data: {0}")]
-    MissingData(&'static str),
+    #[error("invalid byte: {0}")]
+    InvalidByte(u8),
+
+    #[error("unexpected EOF")]
+    UnexpectedEndOfInput,
 }
 
 impl StringEncodingError {
