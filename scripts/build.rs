@@ -14,7 +14,6 @@ pub enum Error {
 
     #[error("unknown error")]
     Unknown,
-
 }
 
 fn main() {

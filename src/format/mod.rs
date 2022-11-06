@@ -1,5 +1,6 @@
-//! Deserialize and Serialize of various Nintendo file formats used by GameCube and Wii games.
-//! 
+//! Deserialize and Serialize of various Nintendo file formats used by GameCube
+//! and Wii games.
+//!
 //! Formats supported:
 //! - [DOL - Dolphin Executable][`dol`]
 //! - [REL - Relocatable Executable][`rel`]
@@ -8,9 +9,9 @@
 //! - [CISO - Compact ISO (WIB)][`ciso`]
 //! - [ELF - Executable and Linkable Format][`elf`]
 
-pub mod dol;
-pub mod gcm;
 pub mod ciso;
-pub mod rel;
-pub mod rarc;
+pub mod dol;
 pub mod elf;
+pub mod gcm;
+pub mod rarc;
+pub mod rel;

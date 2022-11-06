@@ -38,7 +38,7 @@
 //!
 //! TODO: Add examples
 
-// TODO: These should be re-enabled again once I have found a suitable solution 
+// TODO: These should be re-enabled again once I have found a suitable solution
 // for the create uninitialized storage and write data to it. I don't want to
 // first zero-fill the storage first...
 #![allow(clippy::uninit_vec, clippy::unused_io_amount)]

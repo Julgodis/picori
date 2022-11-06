@@ -1,6 +1,7 @@
 use std::io::{Read, Seek};
 
-use crate::{PicoriError, helper::read_extension::ReadExtension};
+use crate::helper::read_extension::ReadExtension;
+use crate::PicoriError;
 
 pub struct Rel {}
 

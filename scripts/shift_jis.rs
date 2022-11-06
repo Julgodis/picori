@@ -1,6 +1,6 @@
 use std::env;
 use std::fs::OpenOptions;
-use std::io::{BufWriter};
+use std::io::BufWriter;
 use std::path::Path;
 use std::result::Result;
 

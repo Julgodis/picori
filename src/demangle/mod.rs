@@ -1,2 +1,1 @@
-//! Demanglers for C++ symbols 
-//! 
+//! Demanglers for C++ symbols

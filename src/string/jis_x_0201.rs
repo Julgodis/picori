@@ -105,8 +105,8 @@ impl StringReadSupport for JisX0201 {
 
 #[cfg(test)]
 mod tests {
-    use crate::helper::read_extension::StringReadSupport;
     use super::*;
+    use crate::helper::read_extension::StringReadSupport;
 
     #[test]
     fn ascii() {

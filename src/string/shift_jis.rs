@@ -345,9 +345,13 @@ mod tests_1997 {
     fn first() {
         let data = b"\x83\x5b\x83\x8b\x83\x5f\x83\x93\x82\xcc\x93\x60\x90\xe0\0\x95\x97\x82\xcc\x83\x5e\x83\x4e\x83\x67";
         let first = ShiftJis1997::first(data).unwrap();
-        let second = 
-            data.iter().skip_while(|x| **x != 0).skip(1)
-            .sjis1997().collect::<Result<String, _>>().unwrap();
+        let second = data
+            .iter()
+            .skip_while(|x| **x != 0)
+            .skip(1)
+            .sjis1997()
+            .collect::<Result<String, _>>()
+            .unwrap();
 
         assert_eq!(first, "ゼルダンの伝説");
         assert_eq!(second, "風のタクト");
@@ -411,9 +415,13 @@ mod tests_2004 {
     fn first() {
         let data = b"\x83\x5b\x83\x8b\x83\x5f\x83\x93\x82\xcc\x93\x60\x90\xe0\x95\x97\x82\xcc\x83\x5e\x83\x4e\x83\x67\0\x86\x63";
         let first = ShiftJis2004::first(data).unwrap();
-        let second = 
-            data.iter().skip_while(|x| **x != 0).skip(1)
-            .sjis2004().collect::<Result<String, _>>().unwrap();
+        let second = data
+            .iter()
+            .skip_while(|x| **x != 0)
+            .skip(1)
+            .sjis2004()
+            .collect::<Result<String, _>>()
+            .unwrap();
 
         assert_eq!(first, "ゼルダンの伝説風のタクト");
         assert_eq!(second, "æ̀");
