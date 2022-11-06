@@ -1,62 +1,62 @@
 #[cfg(test)]
 mod jis_x_0201 {
-    use picori::string::jis_x_0201::JisX0210Decoder;
-    use picori::string::StringDecoder;
+    use picori::string::jis_x_0201::{JisX0201, JisX0201Iterator};
 
     #[test]
     fn ascii() {
-        for x in 0..=0x7f {
-            if x == 0x5c || x == 0x7e {
-                continue;
-            }
+        let result = (0..=0x7f)
+            .filter(|x| *x != 0x5c)
+            .filter(|x| *x != 0x7e)
+            .jisx0201()
+            .map(|x| x.unwrap());
 
-            let result = JisX0210Decoder::decode_bytes(&[x]);
-            assert!(result.is_ok());
-            assert_eq!(result.unwrap(), format!("{}", x as char));
-        }
+        let ok = (0..=0x7f)
+            .filter(|x| *x != 0x5c)
+            .filter(|x| *x != 0x7e)
+            .zip(result)
+            .map(|(a, b)| (a as u8) as char == b)
+            .all(|x| x);
 
-        let x5c = JisX0210Decoder::decode_bytes(&[0x5c]);
-        assert!(x5c.is_ok());
-        assert_eq!(x5c.unwrap(), "\u{00a5}".to_string());
+        assert!(ok);
 
-        let x7e = JisX0210Decoder::decode_bytes(&[0x7e]);
-        assert!(x7e.is_ok());
-        assert_eq!(x7e.unwrap(), "\u{203e}".to_string());
+        assert!(&[0x5c].iter().jisx0201().all(|x| match x {
+            Ok(c) => c == '\u{00a5}',
+            Err(_) => true,
+        }));
+
+        assert!(&[0x7e].iter().jisx0201().all(|x| match x {
+            Ok(c) => c == '\u{203e}',
+            Err(_) => true,
+        }));
     }
 
     #[test]
     fn halfwidth_katakana() {
-        for x in 0xa1..=0xdf {
-            let result = JisX0210Decoder::decode_bytes(&[x]);
-            assert!(result.is_ok());
-            assert_eq!(
-                result.unwrap(),
-                format!("{}", char::from_u32(0xFF61 + (x - 0xa1) as u32).unwrap())
-            );
-        }
+        let result = (0xa1..=0xdf)
+            .jisx0201()
+            .map(|x| x.unwrap())
+            .zip(0xa1..=0xdf)
+            .all(|(x, i)| {
+                let unicode = 0xFF61 + (i as u8 - 0xa1) as u32;
+                char::from_u32(unicode).unwrap() == x
+            });
+        assert!(result);
     }
 
     #[test]
     fn err() {
-        for x in 0x80..=0xa0 {
-            let result = JisX0210Decoder::decode_bytes(&[x]);
-            assert!(result.is_err());
-        }
+        let result1 = (0x80..=0xa0).jisx0201().all(|x| x.is_err());
+        let result2 = (0xe0..=0xff).jisx0201().all(|x| x.is_err());
 
-        for x in 0xE0..=0xff {
-            let result = JisX0210Decoder::decode_bytes(&[x]);
-            assert!(result.is_err());
-        }
+        assert!(result1);
+        assert!(result2);
     }
 
     #[test]
     fn until_zero() {
         let data = b"abc\0def";
-        let first = JisX0210Decoder::decode_until_zero(data).unwrap();
-        let second = JisX0210Decoder::decode_until_zero_iterator(
-            data.iter().skip_while(|x| **x != 0).skip(1).map(|x| *x),
-        )
-        .unwrap();
+        let first = JisX0201::first(data).unwrap();
+        let second = JisX0201::first(&data[4..]).unwrap();
 
         assert_eq!(first, "abc");
         assert_eq!(second, "def");

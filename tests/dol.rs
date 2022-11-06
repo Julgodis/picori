@@ -6,7 +6,7 @@ mod dol_tests {
 
     use super::*;
 
-    static GZLE01: &[u8] = include_bytes!("../assets/tests/dol/t0.dol");
+    static GZLE01: &[u8] = include_bytes!("../assets/tests/dol/test0.dol");
 /*
     #[test]
     fn invalid_header_size() {

@@ -38,8 +38,6 @@
 //!
 //! TODO: Add examples
 
-#![feature(try_trait_v2)]
-
 // TODO: These should be re-enabled again once I have found a suitable solution 
 // for the create uninitialized storage and write data to it. I don't want to
 // first zero-fill the storage first...

@@ -4,7 +4,6 @@ use std::mem::MaybeUninit;
 
 use crate::endian::{BigEndian, EndianAgnostic, LittleEndian, NativeEndian};
 use crate::error::PicoriError;
-use crate::string::StringDecoder;
 
 pub trait ReadExtensionU8: Read {
     fn read_eu8<T: EndianAgnostic>(&mut self) -> Result<u8, PicoriError> {
@@ -94,12 +93,19 @@ pub trait ReadArrayExtensionU32: Read {
     }
 }
 
+pub trait StringReadSupport {
+    fn read_string(data: &[u8]) -> Result<String, PicoriError>;
+}
+
 pub trait ReadStringExtension: Read {
-    fn read_string<const L: usize, T: StringDecoder>(&mut self) -> Result<String, PicoriError> {
+    fn read_string<const L: usize, E>(&mut self) -> Result<String, PicoriError>
+    where
+        E: StringReadSupport,
+    {
         let mut buf = MaybeUninit::<[u8; L]>::uninit();
         let slice = unsafe { &mut *buf.as_mut_ptr() };
         self.read_exact(slice)?;
-        let str = T::decode_until_zero(unsafe { &buf.assume_init() })?;
+        let str = E::read_string(unsafe { &buf.assume_init() })?;
         Ok(str)
     }
 }

@@ -7,15 +7,15 @@ pub trait GenTableValue {
 }
 
 impl GenTableValue for u8 {
-    fn gen_table_value(&self) -> String { format!("{}", self) }
+    fn gen_table_value(&self) -> String { format!("{self}") }
 }
 
 impl GenTableValue for u32 {
-    fn gen_table_value(&self) -> String { format!("{}", self) }
+    fn gen_table_value(&self) -> String { format!("{self}") }
 }
 
 impl GenTableValue for usize {
-    fn gen_table_value(&self) -> String { format!("{}", self) }
+    fn gen_table_value(&self) -> String { format!("{self}") }
 }
 
 impl<T0, T1> GenTableValue for (T0, T1)

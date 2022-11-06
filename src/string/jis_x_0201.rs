@@ -4,13 +4,27 @@
 //! and `0x7e` is converted to `0x203e` (OVERLINE). The rest of the are
 //! undefined and not supported.
 
-use super::StringDecoder;
+use std::borrow::Borrow;
+use std::marker::PhantomData;
+
 use crate::error::StringEncodingError::*;
+use crate::helper::read_extension::StringReadSupport;
 use crate::PicoriError;
 
-pub struct JisX0210Decoder {}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct JisX0201Decoder<'x, I> {
+    iter:    I,
+    _marker: PhantomData<&'x ()>,
+}
 
-impl JisX0210Decoder {
+impl<I> JisX0201Decoder<'_, I> {
+    fn new<'x>(iter: I) -> JisX0201Decoder<'x, I> {
+        JisX0201Decoder {
+            iter,
+            _marker: PhantomData,
+        }
+    }
+
     pub fn decode_byte(byte: u8) -> Option<char> {
         match byte {
             // Modified ASCII character
@@ -28,28 +42,60 @@ impl JisX0210Decoder {
     }
 }
 
-impl StringDecoder for JisX0210Decoder {
-    fn decode_iterator<T>(input: T) -> Result<String, PicoriError>
-    where
-        T: Iterator<Item = u8>,
-    {
-        let mut output = String::new();
-        let mut iter = input.peekable();
+impl<I> Iterator for JisX0201Decoder<'_, I>
+where
+    I: Iterator,
+    I::Item: Borrow<u8>,
+{
+    type Item = Result<char, PicoriError>;
 
-        while let Some(byte) = iter.next() {
-            match Self::decode_byte(byte) {
-                Some(c) => output.push(c),
-                None => return Err(InvalidByte(byte).into()),
-            }
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(byte) = self.iter.next() {
+            let byte = byte.borrow();
+            Some(match Self::decode_byte(*byte) {
+                Some(c) => Ok(c),
+                None => Err(InvalidByte(*byte).into()),
+            })
+        } else {
+            None
         }
-
-        Ok(output)
     }
+}
 
-    fn decode_until_zero_iterator<T>(input: T) -> Result<String, PicoriError>
+pub struct JisX0201 {}
+
+impl JisX0201 {
+    pub fn iter<'iter, I>(iter: I) -> JisX0201Decoder<'iter, I>
     where
-        T: Iterator<Item = u8>,
+        I: Iterator + Clone,
+        I::Item: Borrow<u8>,
     {
-        Self::decode_iterator(input.take_while(|b| *b != 0))
+        JisX0201Decoder::new(iter)
     }
+
+    pub fn all(data: &[u8]) -> Result<String, PicoriError> { Self::iter(data.iter()).collect() }
+
+    pub fn first(data: &[u8]) -> Result<String, PicoriError> {
+        Self::iter(data.iter())
+            .take_while(|c| match c {
+                Ok(c) => *c != 0 as char,
+                Err(_) => false,
+            })
+            .collect()
+    }
+}
+
+pub trait JisX0201Iterator: Iterator + Clone + Sized {
+    fn jisx0201<'b>(self) -> JisX0201Decoder<'b, Self> { JisX0201Decoder::new(self) }
+}
+
+impl<I> JisX0201Iterator for I
+where
+    I: Iterator + Clone + Sized,
+    I::Item: Borrow<u8>,
+{
+}
+
+impl StringReadSupport for JisX0201 {
+    fn read_string(data: &[u8]) -> Result<String, PicoriError> { Self::first(data) }
 }

@@ -1,13 +1,14 @@
 //! GameCube CISO (Compact ISO).
 //!
 //! CISO is also known as WIB. It is a compressed format that can to wrap any
-//! other format, i.e., it must not be used we GameCube/Wii ISOs or [GCM][`super::gcm`].
+//! other format, i.e., it must not be used we GameCube/Wii ISOs or
+//! [GCM][`super::gcm`].
 //!
 //! ## Examples
 //!
 //! TODO: Add examples
 
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{Read, Seek};
 use std::result::Result;
 
 use crate::error::{FormatError, PicoriError};
@@ -18,8 +19,8 @@ static MAGIC: u32 = 0x4F534943;
 
 #[derive(Debug)]
 struct Header {
-    block_size: usize,
-    blocks:     Vec<(usize, bool)>,
+    _block_size: usize,
+    _blocks:     Vec<(usize, bool)>,
 }
 
 impl Header {
@@ -49,14 +50,17 @@ impl Header {
             .map(|x| (x.0, *x.1 == 1))
             .collect();
 
-        Ok(Header { block_size, blocks })
+        Ok(Header {
+            _block_size: block_size,
+            _blocks:     blocks,
+        })
     }
 }
 
 pub struct CisoDecoder<'x, R: Read + Seek> {
-    header:      Header,
-    reader:      &'x mut R,
-    data_offset: u64,
+    _header:      Header,
+    _reader:      &'x mut R,
+    _data_offset: u64,
 }
 
 impl<'x, Reader> CisoDecoder<'x, Reader>
@@ -67,37 +71,35 @@ where
         let header = Header::deserialize(reader)?;
         let data_offset = reader.stream_position()?;
         Ok(Self {
-            header,
-            reader,
-            data_offset,
+            _header:      header,
+            _reader:      reader,
+            _data_offset: data_offset,
         })
     }
 
-    /*
-    pub fn decode<Writer>(&mut self, writer: &mut Writer) -> Result<(), PicoriError>
-    where
-        Writer: Write,
-    {
-        self.reader.seek(SeekFrom::Start(self.data_offset))?;
-
-        let zero_block = vec![0_u8; self.header.block_size];
-        let mut data_block = vec![0_u8; self.header.block_size];
-        self.header
-            .blocks
-            .iter()
-            .try_for_each(|(_i, data_or_zero)| {
-                match data_or_zero {
-                    true => {
-                        self.reader.read_exact(&mut data_block)?;
-                        writer.write_all(&data_block)?;
-                    },
-                    false => {
-                        writer.write_all(&zero_block)?;
-                    },
-                }
-
-                Ok(())
-            })
-    }*/
+    // pub fn decode<Writer>(&mut self, writer: &mut Writer) -> Result<(),
+    // PicoriError> where
+    // Writer: Write,
+    // {
+    // self.reader.seek(SeekFrom::Start(self.data_offset))?;
+    //
+    // let zero_block = vec![0_u8; self.header.block_size];
+    // let mut data_block = vec![0_u8; self.header.block_size];
+    // self.header
+    // .blocks
+    // .iter()
+    // .try_for_each(|(_i, data_or_zero)| {
+    // match data_or_zero {
+    // true => {
+    // self.reader.read_exact(&mut data_block)?;
+    // writer.write_all(&data_block)?;
+    // },
+    // false => {
+    // writer.write_all(&zero_block)?;
+    // },
+    // }
+    //
+    // Ok(())
+    // })
+    // }
 }
-

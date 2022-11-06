@@ -1,13 +1,10 @@
 use std::collections::HashMap;
 use std::io::{Seek, SeekFrom, Write};
 use std::mem::MaybeUninit;
-use std::ops::Try;
-use std::path::{Path, PathBuf};
 
 use crate::error::{ensure, FormatError, PicoriError};
 use crate::helper::read_extension::ReadExtension;
-use crate::string::ascii::AsciiDecoder;
-use crate::string::StringDecoder;
+use crate::string::ascii::Ascii;
 
 #[derive(Debug, Default)]
 pub struct Boot {
@@ -47,7 +44,7 @@ impl Boot {
         let streaming_buffer_size = input.read_bu8()?;
         let reserved0 = input.read_bu8_array::<0x12>()?;
         let magic = input.read_bu32()?;
-        let game_name = input.read_string::<0x3E0, AsciiDecoder>()?;
+        let game_name = input.read_string::<0x3E0, Ascii>()?;
         let debug_monitor_offset = input.read_bu32()?;
         let debug_monitor_address = input.read_bu32()?;
         let reserved1 = input.read_bu8_array::<0x18>()?;
@@ -192,7 +189,7 @@ pub struct Apploader {
 
 impl Apploader {
     pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
-        let date = input.read_string::<0x10, AsciiDecoder>()?;
+        let date = input.read_string::<0x10, Ascii>()?;
         let entrypoint = input.read_bu32()?;
         let size = input.read_bu32()?;
         let trailer_size = input.read_bu32()?;
@@ -240,17 +237,11 @@ impl MainExecutable {
         let text_iter = text_offsets
             .iter()
             .zip(text_sizes.iter())
-            .inspect(|(offset, size)| {
-                println!("Text: offset: 0x{:08X}, size: 0x{:08X}", offset, size)
-            })
             .map(|(offset, size)| offset + size);
 
         let data_iter = data_offsets
             .iter()
             .zip(data_sizes.iter())
-            .inspect(|(offset, size)| {
-                println!("Data: offset: 0x{:08X}, size: 0x{:08X}", offset, size)
-            })
             .map(|(offset, size)| offset + size);
 
         let total_size = text_iter
@@ -364,13 +355,13 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
         for (i, entry) in entries.iter().enumerate() {
             self.entries.push(match entry {
                 _FstEntry::File { name, offset, size } => FSTEntry::File {
-                    name:   AsciiDecoder::decode_until_zero(&string_table[*name as usize..])?,
+                    name:   Ascii::first(&string_table[*name as usize..])?,
                     index:  i as u32,
                     offset: *offset,
                     size:   *size,
                 },
                 _FstEntry::Directory { name, parent, end } => FSTEntry::Directory {
-                    name:   AsciiDecoder::decode_until_zero(&string_table[*name as usize..])?,
+                    name:   Ascii::first(&string_table[*name as usize..])?,
                     parent: *parent,
                     begin:  (i + 1) as u32,
                     end:    *end - 1,
@@ -449,81 +440,81 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
         }
     }
 
-    fn for_each_file<F, R>(
-        &mut self,
-        path: &mut PathBuf,
-        index: &mut usize,
-        entry: &FSTEntry,
-        func: &mut F,
-    ) -> R
-    where
-        F: FnMut(&mut Self, &Path, &FSTEntry) -> R,
-        R: Try<Output = ()>,
-    {
-        match entry {
-            FSTEntry::File { name, .. } => path.push(name),
-            FSTEntry::Directory { name, .. } => path.push(name),
-        };
-
-        func(self, path.as_path(), entry)?;
-
-        if let FSTEntry::Directory { begin, end, .. } = entry {
-            *index = *begin as usize;
-            while *index < *end as usize {
-                let next_entry = self.entries[*index].clone();
-                self.for_each_file(path, index, &next_entry, func)?;
-            }
-            path.pop();
-        } else {
-            path.pop();
-            *index += 1;
-        }
-
-        R::from_output(())
-    }
-
-    #[inline]
-    pub fn try_for_each<F, R>(&mut self, entry: FSTEntry, func: &mut F) -> R
-    where
-        F: FnMut(&mut Self, &Path, &FSTEntry) -> R,
-        R: Try<Output = ()>,
-    {
-        let mut path = PathBuf::new();
-        let mut index = match &entry {
-            FSTEntry::File { .. } => 0,
-            FSTEntry::Directory { begin, .. } => *begin as usize,
-        };
-
-        self.for_each_file(&mut path, &mut index, &entry, func)
-    }
-
-    pub fn for_each<F>(&mut self, entry: FSTEntry, mut func: F)
-    where
-        F: FnMut(&mut Self, &Path, &FSTEntry),
-    {
-        self.try_for_each(entry, &mut |decoder, path, entry| {
-            func(decoder, path, entry);
-            Ok::<(), ()>(())
-        })
-        .unwrap();
-    }
-
-    #[inline]
-    pub fn try_for_each_all<F, R>(&mut self, func: &mut F) -> R
-    where
-        F: FnMut(&mut Self, &Path, &FSTEntry) -> R,
-        R: Try<Output = ()>,
-    {
-        let root = self.root_directory();
-        self.try_for_each(root, func)
-    }
-
-    #[inline]
-    pub fn for_each_all<F>(&mut self, func: F)
-    where
-        F: FnMut(&mut Self, &Path, &FSTEntry),
-    {
-        let root = self.root_directory();
-        self.for_each(root, func)
-    }
+    // fn for_each_file<F, R>(
+    // &mut self,
+    // path: &mut PathBuf,
+    // index: &mut usize,
+    // entry: &FSTEntry,
+    // func: &mut F,
+    // ) -> R
+    // where
+    // F: FnMut(&mut Self, &Path, &FSTEntry) -> R,
+    // R: Try<Output = ()>,
+    // {
+    // match entry {
+    // FSTEntry::File { name, .. } => path.push(name),
+    // FSTEntry::Directory { name, .. } => path.push(name),
+    // };
+    //
+    // func(self, path.as_path(), entry)?;
+    //
+    // if let FSTEntry::Directory { begin, end, .. } = entry {
+    // index = *begin as usize;
+    // while *index < *end as usize {
+    // let next_entry = self.entries[*index].clone();
+    // self.for_each_file(path, index, &next_entry, func)?;
+    // }
+    // path.pop();
+    // } else {
+    // path.pop();
+    // index += 1;
+    // }
+    //
+    // R::from_output(())
+    // }
+    //
+    // #[inline]
+    // pub fn try_for_each<F, R>(&mut self, entry: FSTEntry, func: &mut F) -> R
+    // where
+    // F: FnMut(&mut Self, &Path, &FSTEntry) -> R,
+    // R: Try<Output = ()>,
+    // {
+    // let mut path = PathBuf::new();
+    // let mut index = match &entry {
+    // FSTEntry::File { .. } => 0,
+    // FSTEntry::Directory { begin, .. } => *begin as usize,
+    // };
+    //
+    // self.for_each_file(&mut path, &mut index, &entry, func)
+    // }
+    //
+    // pub fn for_each<F>(&mut self, entry: FSTEntry, mut func: F)
+    // where
+    // F: FnMut(&mut Self, &Path, &FSTEntry),
+    // {
+    // self.try_for_each(entry, &mut |decoder, path, entry| {
+    // func(decoder, path, entry);
+    // Ok::<(), ()>(())
+    // })
+    // .unwrap();
+    // }
+    //
+    // #[inline]
+    // pub fn try_for_each_all<F, R>(&mut self, func: &mut F) -> R
+    // where
+    // F: FnMut(&mut Self, &Path, &FSTEntry) -> R,
+    // R: Try<Output = ()>,
+    // {
+    // let root = self.root_directory();
+    // self.try_for_each(root, func)
+    // }
+    //
+    // #[inline]
+    // pub fn for_each_all<F>(&mut self, func: F)
+    // where
+    // F: FnMut(&mut Self, &Path, &FSTEntry),
+    // {
+    // let root = self.root_directory();
+    // self.for_each(root, func)
+    // }
 }

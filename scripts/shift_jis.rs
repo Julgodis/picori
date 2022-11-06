@@ -1,8 +1,6 @@
-use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::OpenOptions;
-use std::io::{BufWriter, Write};
-use std::num::ParseIntError;
+use std::io::{BufWriter};
 use std::path::Path;
 use std::result::Result;
 
@@ -117,7 +115,7 @@ fn generate_table(
     path: &Path,
     name: &'static str,
     version: Version,
-    data: &Vec<Data>,
+    data: &[Data],
 ) -> Result<(), Error> {
     let data = data
         .iter()
@@ -194,16 +192,16 @@ fn generate_table(
 
     let mut buffer = BufWriter::new(&mut output_file);
 
-    table_lookup.gen_table(format!("{}_UTF8_T", name), &mut buffer)?;
-    single_lookup.gen_table(format!("{}_UTF8_S", name), &mut buffer)?;
+    table_lookup.gen_table(format!("{name}_UTF8_T"), &mut buffer)?;
+    single_lookup.gen_table(format!("{name}_UTF8_S"), &mut buffer)?;
     if !double_lookup.is_empty() {
-        double_lookup.gen_table(format!("{}_UTF8_D", name), &mut buffer)?;
+        double_lookup.gen_table(format!("{name}_UTF8_D"), &mut buffer)?;
     }
 
     Ok(())
 }
 
-static SHIFT_JIS_1983_2004: &'static str = include_str!("../assets/build/shift-jis.txt");
+static SHIFT_JIS_1983_2004: &str = include_str!("../assets/build/shift-jis.txt");
 
 pub fn generate() -> Result<(), Error> {
     let data = SHIFT_JIS_1983_2004

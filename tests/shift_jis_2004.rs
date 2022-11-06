@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod shift_jis_2004 {
-    use picori::string::shift_jis::{ShiftJisDecoder, V2004};
-    use picori::string::StringDecoder;
 
+
+    /*
     static TEST_2004_UTF8: &[u8] = include_bytes!("../assets/tests/shift-jis/2004.ok.utf-8.txt");
     static TEST_2004_SHIFTJIS: &[u8] =
         include_bytes!("../assets/tests/shift-jis/2004.ok.shift-jis.txt");
@@ -37,5 +37,5 @@ mod shift_jis_2004 {
 
         assert_eq!(first, "ゼルダンの伝説風のタクト");
         assert_eq!(second, "æ̀");
-    }
+    }*/
 }

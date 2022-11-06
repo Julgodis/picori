@@ -37,12 +37,14 @@
 //! - [JIS拡張漢字](http://www.asahi-net.or.jp/~ax2s-kmtn/ref/jisx0213/index.html)
 //! - [Shift JIS Kanij Table](http://www.rikai.com/library/kanjitables/kanji_codes.sjis.shtml)
 
+use std::borrow::Borrow;
+use std::marker::PhantomData;
 use std::result::Result;
 
-use super::jis_x_0201::JisX0210Decoder;
-use super::StringDecoder;
+use super::jis_x_0201::JisX0201Decoder;
 use crate::ensure;
 use crate::error::PicoriError;
+use crate::helper::read_extension::StringReadSupport;
 use crate::StringEncodingError::*;
 
 // Load the encoding and decoding tables for Shift-JIS. These tables are
@@ -56,83 +58,172 @@ pub enum Next {
     Two(char, char),
 }
 
-pub trait BaseDecoder {
-    fn decode_next<T>(iter: &mut T) -> Result<Next, PicoriError>
-    where
-        T: Iterator<Item = u8>;
+// Shift JIS 1997
+//
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShiftJis1997Decoder<'x, I>
+where
+    I: Iterator,
+    I::Item: Borrow<u8>,
+{
+    iter:     I,
+    buffered: Option<char>,
+    _marker:  PhantomData<&'x ()>,
 }
 
-pub struct V1997 {}
-pub struct V2004 {}
+impl<I> ShiftJis1997Decoder<'_, I>
+where
+    I: Iterator,
+    I::Item: Borrow<u8>,
+{
+    fn new<'x>(iter: I) -> ShiftJis1997Decoder<'x, I> {
+        ShiftJis1997Decoder {
+            iter,
+            buffered: None,
+            _marker: PhantomData,
+        }
+    }
 
-impl BaseDecoder for V1997 {
-    fn decode_next<T>(iter: &mut T) -> Result<Next, PicoriError>
-    where
-        T: Iterator<Item = u8>,
-    {
+    fn decode_next(iter: &mut I) -> Result<Next, PicoriError> {
         let byte = iter.next();
-        if byte.is_none() {
-            Ok(Next::EndOfInput)
-        } else {
-            let byte = byte.unwrap();
-            if let Some(c) = JisX0210Decoder::decode_byte(byte) {
+        if let Some(byte) = byte {
+            let byte = *byte.borrow();
+            if let Some(c) = JisX0201Decoder::<()>::decode_byte(byte) {
                 return Ok(Next::One(c));
             }
 
             match byte {
                 // First byte of a double-byte JIS X 0208 character
-                0x81..=0x9F | 0xE0..=0xEF => {
-                    let next = iter
-                        .next()
-                        .ok_or::<PicoriError>(UnexpectedEndOfInput.into())?;
-
+                0x81..=0x9F | 0xE0..=0xFC => {
+                    let next = iter.next().ok_or(UnexpectedEndOfInput)?;
+                    let next = *next.borrow();
                     let (first, last, offset) = SJIS_1997_UTF8_T[byte as usize];
                     ensure!(next >= first && next <= last, InvalidByte(next));
-
                     let relative = (next - first) as usize;
                     let index = offset + relative;
                     let value = SJIS_1997_UTF8_S[index];
-
                     ensure!(value != 0, InvalidByte(next));
+                    ensure!((value & 0x8000_0000) == 0, InvalidByte(next));
                     Ok(Next::One(unsafe { char::from_u32_unchecked(value) }))
                 },
                 // Invalid as first byte
                 _ => Err(InvalidByte(byte).into()),
             }
+        } else {
+            Ok(Next::EndOfInput)
         }
     }
 }
 
-impl BaseDecoder for V2004 {
-    fn decode_next<T>(iter: &mut T) -> Result<Next, PicoriError>
-    where
-        T: Iterator<Item = u8>,
-    {
-        let byte = iter.next();
-        if byte.is_none() {
-            Ok(Next::EndOfInput)
+impl<I> Iterator for ShiftJis1997Decoder<'_, I>
+where
+    I: Iterator,
+    I::Item: Borrow<u8>,
+{
+    type Item = Result<char, PicoriError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(value) = self.buffered {
+            self.buffered = None;
+            Some(Ok(value))
         } else {
-            let byte = byte.unwrap();
-            if let Some(c) = JisX0210Decoder::decode_byte(byte) {
-                println!("byte: {} (ank)", byte);
+            match ShiftJis1997Decoder::decode_next(&mut self.iter) {
+                Ok(Next::EndOfInput) => None,
+                Ok(Next::One(c)) => Some(Ok(c)),
+                Ok(Next::Two(..)) => unreachable!(),
+                Err(e) => Some(Err(e)),
+            }
+        }
+    }
+}
+
+pub struct ShiftJis1997 {}
+
+impl ShiftJis1997 {
+    pub fn iter<'iter, I>(iter: I) -> ShiftJis1997Decoder<'iter, I>
+    where
+        I: Iterator + Clone,
+        I::Item: Borrow<u8>,
+    {
+        ShiftJis1997Decoder::new(iter)
+    }
+
+    pub fn all(data: &[u8]) -> Result<String, PicoriError> { Self::iter(data.iter()).collect() }
+
+    pub fn first(data: &[u8]) -> Result<String, PicoriError> {
+        Self::iter(data.iter())
+            .take_while(|c| match c {
+                Ok(c) => *c != 0 as char,
+                Err(_) => false,
+            })
+            .collect()
+    }
+}
+
+pub trait ShiftJis1997Iterator: Iterator + Clone + Sized
+where
+    Self::Item: Borrow<u8>,
+{
+    fn sjis1997<'b>(self) -> ShiftJis1997Decoder<'b, Self> { ShiftJis1997Decoder::new(self) }
+}
+
+impl<I> ShiftJis1997Iterator for I
+where
+    I: Iterator + Clone + Sized,
+    I::Item: Borrow<u8>,
+{
+}
+
+impl StringReadSupport for ShiftJis1997 {
+    fn read_string(data: &[u8]) -> Result<String, PicoriError> { Self::first(data) }
+}
+
+// Shift JIS 2004
+//
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShiftJis2004Decoder<'x, I>
+where
+    I: Iterator,
+    I::Item: Borrow<u8>,
+{
+    iter:     I,
+    buffered: Option<char>,
+    _marker:  PhantomData<&'x ()>,
+}
+
+impl<I> ShiftJis2004Decoder<'_, I>
+where
+    I: Iterator,
+    I::Item: Borrow<u8>,
+{
+    fn new<'x>(iter: I) -> ShiftJis2004Decoder<'x, I> {
+        ShiftJis2004Decoder {
+            iter,
+            buffered: None,
+            _marker: PhantomData,
+        }
+    }
+
+    fn decode_next(iter: &mut I) -> Result<Next, PicoriError> {
+        let byte = iter.next();
+        if let Some(byte) = byte {
+            let byte = *byte.borrow();
+            if let Some(c) = JisX0201Decoder::<()>::decode_byte(byte) {
                 return Ok(Next::One(c));
             }
-            println!("byte: {}", byte);
 
             match byte {
                 // First byte of a double-byte JIS X 0208 or JIS X 0213 character
                 0x81..=0x9F | 0xE0..=0xFC => {
-                    let next = iter
-                        .next()
-                        .ok_or::<PicoriError>(UnexpectedEndOfInput.into())?;
-
+                    let next = iter.next().ok_or(UnexpectedEndOfInput)?;
+                    let next = *next.borrow();
                     let (first, last, offset) = SJIS_2004_UTF8_T[byte as usize];
                     ensure!(next >= first && next <= last, InvalidByte(next));
-
                     let relative = (next - first) as usize;
                     let index = offset + relative;
                     let value = SJIS_2004_UTF8_S[index];
-
                     ensure!(value != 0, InvalidByte(next));
                     if value & 0x8000_0000 != 0 {
                         let index = (value & 0x7fff_ffff) as usize;
@@ -148,68 +239,74 @@ impl BaseDecoder for V2004 {
                 // Invalid as first byte
                 _ => Err(InvalidByte(byte).into()),
             }
+        } else {
+            Ok(Next::EndOfInput)
         }
     }
 }
 
-pub struct ShiftJisDecoder<S>
+impl<I> Iterator for ShiftJis2004Decoder<'_, I>
 where
-    S: BaseDecoder,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
-    standard: std::marker::PhantomData<S>,
+    type Item = Result<char, PicoriError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(value) = self.buffered {
+            self.buffered = None;
+            Some(Ok(value))
+        } else {
+            match ShiftJis2004Decoder::decode_next(&mut self.iter) {
+                Ok(Next::EndOfInput) => None,
+                Ok(Next::One(c)) => Some(Ok(c)),
+                Ok(Next::Two(first, second)) => {
+                    self.buffered = Some(second);
+                    Some(Ok(first))
+                },
+                Err(e) => Some(Err(e)),
+            }
+        }
+    }
 }
 
-impl<S> StringDecoder for ShiftJisDecoder<S>
+pub struct ShiftJis2004 {}
+
+impl ShiftJis2004 {
+    pub fn iter<'iter, I>(iter: I) -> ShiftJis2004Decoder<'iter, I>
+    where
+        I: Iterator + Clone,
+        I::Item: Borrow<u8>,
+    {
+        ShiftJis2004Decoder::new(iter)
+    }
+
+    pub fn all(data: &[u8]) -> Result<String, PicoriError> { Self::iter(data.iter()).collect() }
+
+    pub fn first(data: &[u8]) -> Result<String, PicoriError> {
+        Self::iter(data.iter())
+            .take_while(|c| match c {
+                Ok(c) => *c != 0 as char,
+                Err(_) => false,
+            })
+            .collect()
+    }
+}
+
+pub trait ShiftJis2004Iterator: Iterator + Clone + Sized
 where
-    S: BaseDecoder,
+    Self::Item: Borrow<u8>,
 {
-    fn decode_iterator<T>(input: T) -> Result<String, PicoriError>
-    where
-        T: Iterator<Item = u8>,
-    {
-        let mut output = String::new();
-        let mut iter = input.peekable();
+    fn sjis2004<'b>(self) -> ShiftJis2004Decoder<'b, Self> { ShiftJis2004Decoder::new(self) }
+}
 
-        while match S::decode_next(&mut iter)? {
-            Next::EndOfInput => false,
-            Next::One(c) => {
-                output.push(c);
-                true
-            },
-            Next::Two(first, second) => {
-                output.push(first);
-                output.push(second);
-                true
-            },
-        } {}
+impl<I> ShiftJis2004Iterator for I
+where
+    I: Iterator + Clone + Sized,
+    I::Item: Borrow<u8>,
+{
+}
 
-        Ok(output)
-    }
-
-    fn decode_until_zero_iterator<T>(input: T) -> Result<String, PicoriError>
-    where
-        T: Iterator<Item = u8>,
-    {
-        let mut iter = input.peekable();
-        let mut output = String::new();
-
-        while match S::decode_next(&mut iter)? {
-            Next::EndOfInput => false,
-            Next::One(c) => {
-                if c == '\0' {
-                    false
-                } else {
-                    output.push(c);
-                    true
-                }
-            },
-            Next::Two(first, second) => {
-                output.push(first);
-                output.push(second);
-                true
-            },
-        } {}
-
-        Ok(output)
-    }
+impl StringReadSupport for ShiftJis2004 {
+    fn read_string(data: &[u8]) -> Result<String, PicoriError> { Self::first(data) }
 }
