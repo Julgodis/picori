@@ -41,21 +41,15 @@
 // TODO: These should be re-enabled again once I have found a suitable solution
 // for the create uninitialized storage and write data to it. I don't want to
 // first zero-fill the storage first...
-#![allow(clippy::uninit_vec, clippy::unused_io_amount)]
+#![allow(clippy::uninit_vec)]
+#![warn(warnings, missing_docs)]
 
 pub mod compression;
 pub mod demangle;
-pub mod endian;
 pub mod format;
 pub mod string;
 
-mod error;
 mod helper;
 
-pub use error::*;
+pub use helper::error::*;
 
-pub mod internal {
-    //! Structs and functions that are used internally, these are exposed for
-    //! publicly for convience.
-    pub use super::helper::reader::SliceReader;
-}

@@ -64,7 +64,7 @@ where
     {
         write!(
             buffer,
-            "static {}:[{};{}]=[",
+            "pub static {}:[{};{}]=[",
             name,
             std::any::type_name::<T>(),
             self.len()

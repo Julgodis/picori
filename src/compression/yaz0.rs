@@ -13,10 +13,10 @@
 //! Implementation of the decompression algorithm is based
 //! on compression specification <http://www.amnoid.de/gc/yaz0.txt> by amnoid.
 
-use std::io::{Seek, SeekFrom};
+use std::io::SeekFrom;
 
-use crate::error::{ensure, CompressionError, PicoriError};
-use crate::helper::read_extension::ReadExtension;
+use crate::helper::error::{ensure, CompressionError, PicoriError};
+use crate::helper::{Deserializer, Seeker};
 
 pub struct Header {
     pub magic: u32,
@@ -26,27 +26,21 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn from_bytes<Reader>(input: &mut Reader) -> Result<Header, PicoriError>
-    where
-        Reader: ReadExtension,
-    {
+    pub fn from_bytes<D: Deserializer>(input: &mut D) -> Result<Header, PicoriError> {
         Ok(Header {
-            magic: input.read_bu32()?,
-            decompressed_size: input.read_bu32()?,
-            reserved0: input.read_bu32()?,
-            reserved1: input.read_bu32()?,
+            magic: input.deserialize_bu32()?,
+            decompressed_size: input.deserialize_bu32()?,
+            reserved0: input.deserialize_bu32()?,
+            reserved1: input.deserialize_bu32()?,
         })
     }
 
     pub fn is_valid(&self) -> bool { self.magic == 0x59617A30 }
 }
 
-pub fn is_compressed<Reader>(input: &mut Reader) -> bool
-where
-    Reader: ReadExtension + Seek,
-{
+pub fn is_compressed<D: Deserializer + Seeker>(input: &mut D) -> bool {
     let mut check = || -> Result<bool, PicoriError> {
-        let base = input.stream_position()?;
+        let base = input.position()?;
         let is_compressed = Header::from_bytes(input).map(|header| header.is_valid());
         input.seek(SeekFrom::Start(base))?;
         is_compressed
@@ -55,22 +49,18 @@ where
     check().unwrap_or(false)
 }
 
-pub fn decompress<Reader>(input: &mut Reader) -> Result<Vec<u8>, PicoriError>
-where
-    Reader: ReadExtension + Seek,
-{
+pub fn decompress<D: Deserializer + Seeker>(input: &mut D) -> Result<Vec<u8>, PicoriError> {
     let header = Header::from_bytes(input)?;
     ensure!(header.is_valid(), CompressionError::InvalidHeader());
 
-    let current = input.stream_position()?;
+    let current = input.position()?;
     input.seek(SeekFrom::End(0))?;
-    let compressed_size = input.stream_position()?;
+    let compressed_size = input.position()?;
     input.seek(SeekFrom::Start(current))?;
 
-    // TODO: Use uninitialized memory
     let mut dest = vec![0_u8; header.decompressed_size as usize];
     let mut source = vec![0_u8; compressed_size as usize];
-    input.read_exact(source.as_mut_slice())?;
+    input.read_into_buffer(source.as_mut_slice())?; // TODO: use `read_buffer`
     decompress_to_buffer(dest.as_mut_slice(), source.as_slice())?;
 
     Ok(dest)

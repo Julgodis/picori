@@ -2,20 +2,27 @@ use std::borrow::Borrow;
 use std::marker::PhantomData;
 use std::result::Result;
 
-use crate::error::PicoriError;
-use crate::error::StringEncodingError::*;
-use crate::helper::read_extension::StringReadSupport;
+use crate::helper::error::PicoriError;
+use crate::helper::error::StringEncodingError::*;
+use crate::helper::DeserializableStringEncoding;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AsciiDecoder<'x, I> {
-    iter:    I,
+pub struct AsciiDecoder<'x, I>
+where
+    I: IntoIterator,
+    I::Item: Borrow<u8> + Sized,
+{
+    iter:    <I as IntoIterator>::IntoIter,
     _marker: PhantomData<&'x ()>,
 }
 
-impl<I> AsciiDecoder<'_, I> {
+impl<I> AsciiDecoder<'_, I>
+where
+    I: IntoIterator,
+    I::Item: Borrow<u8> + Sized,
+{
     fn new<'x>(iter: I) -> AsciiDecoder<'x, I> {
         AsciiDecoder {
-            iter,
+            iter:    iter.into_iter(),
             _marker: PhantomData,
         }
     }
@@ -32,8 +39,8 @@ impl<I> AsciiDecoder<'_, I> {
 
 impl<I> Iterator for AsciiDecoder<'_, I>
 where
-    I: Iterator,
-    I::Item: Borrow<u8>,
+    I: IntoIterator,
+    I::Item: Borrow<u8> + Sized,
 {
     type Item = Result<char, PicoriError>;
 
@@ -55,16 +62,26 @@ pub struct Ascii {}
 impl Ascii {
     pub fn iter<'iter, I>(iter: I) -> AsciiDecoder<'iter, I>
     where
-        I: Iterator + Clone,
-        I::Item: Borrow<u8>,
+        I: IntoIterator,
+        I::Item: Borrow<u8> + Sized,
     {
         AsciiDecoder::new(iter)
     }
 
-    pub fn all(data: &[u8]) -> Result<String, PicoriError> { Self::iter(data.iter()).collect() }
+    pub fn all<I>(iter: I) -> Result<String, PicoriError>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<u8> + Sized,
+    {
+        Self::iter(iter).collect()
+    }
 
-    pub fn first(data: &[u8]) -> Result<String, PicoriError> {
-        Self::iter(data.iter())
+    pub fn first<I>(iter: I) -> Result<String, PicoriError>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<u8> + Sized,
+    {
+        Self::iter(iter)
             .take_while(|c| match c {
                 Ok(c) => *c != 0 as char,
                 Err(_) => true,
@@ -73,73 +90,42 @@ impl Ascii {
     }
 }
 
-pub trait AsciiIterator: Iterator + Clone + Sized {
+pub trait IteratorExt
+where
+    Self: IntoIterator + Sized,
+    Self::Item: Borrow<u8> + Sized,
+{
     fn ascii<'b>(self) -> AsciiDecoder<'b, Self> { AsciiDecoder::new(self) }
 }
 
-impl<I> AsciiIterator for I
+impl<I> IteratorExt for I
 where
-    I: Iterator + Clone + Sized,
-    I::Item: Borrow<u8>,
+    I: IntoIterator,
+    I::Item: Borrow<u8> + Sized,
 {
 }
 
-impl StringReadSupport for Ascii {
-    fn read_string(data: &[u8]) -> Result<String, PicoriError> { Self::first(data) }
+impl DeserializableStringEncoding for Ascii {
+    fn deserialize_str<I>(iter: I) -> Result<String, PicoriError>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<u8> + Sized,
+    {
+        Self::first(iter)
+    }
 }
 
+// -------------------------------------------------------------------------------
 // Tests
-//
+// -------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helper::read_extension::StringReadSupport;
 
     #[test]
-    fn ok() {
-        let result = (0_u8..=0x7f_u8).ascii().collect::<Result<String, _>>();
-        assert!(result.is_ok());
-
-        let ok = (0..=0x7f)
-            .zip(result.unwrap().chars())
-            .map(|(a, b)| a as u8 as char == b)
-            .all(|x| x);
-        assert!(ok);
-    }
-
-    #[test]
-    fn err() {
-        let result = (0x80..=0xff).ascii().all(|x| x.is_err());
-        assert!(result);
-    }
-
-    #[test]
-    fn first() {
-        assert_eq!(&Ascii::first(b"abc\0def").unwrap()[..], "abc");
-        assert!(&Ascii::first(b"abc\xffdef").is_err());
-    }
-
-    #[test]
-    fn iter() {
-        let data = b"abcdef";
-        assert_eq!(
-            Ascii::iter(data.iter())
-                .map(|x| x.unwrap())
-                .collect::<String>(),
-            "abcdef"
-        );
-    }
-
-    #[test]
-    fn all() {
+    fn deserialize_str() {
         let data = b"abc\0def";
-        assert_eq!(&Ascii::all(data).unwrap()[..], "abc\0def");
-    }
-
-    #[test]
-    fn read_string() {
-        let data = b"abc\0def";
-        assert_eq!(&Ascii::read_string(data).unwrap()[..], "abc");
+        assert_eq!(Ascii::deserialize_str(data).unwrap(), "abc".to_string());
     }
 }

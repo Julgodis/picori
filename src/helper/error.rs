@@ -1,3 +1,5 @@
+use std::result::Result;
+
 use thiserror::Error;
 
 #[derive(Error, Debug)]

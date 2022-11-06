@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use std::io::{Seek, SeekFrom, Write};
-use std::mem::MaybeUninit;
 
-use crate::error::{ensure, FormatError, PicoriError};
-use crate::helper::read_extension::ReadExtension;
-use crate::string::ascii::Ascii;
+use crate::helper::error::{ensure, FormatError, PicoriError};
+use crate::helper::{Deserializer, Seeker};
+use crate::string::Ascii;
 
 #[derive(Debug, Default)]
 pub struct Boot {
@@ -33,29 +32,29 @@ pub struct Boot {
 }
 
 impl Boot {
-    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
-        let console_id = input.read_bu8()?;
-        let game_code = input.read_bu8_array::<2>()?;
-        let country_code = input.read_bu8()?;
-        let maker_code = input.read_bu8_array::<2>()?;
-        let disc_id = input.read_bu8()?;
-        let version = input.read_bu8()?;
-        let audio_streaming = input.read_bu8()?;
-        let streaming_buffer_size = input.read_bu8()?;
-        let reserved0 = input.read_bu8_array::<0x12>()?;
-        let magic = input.read_bu32()?;
-        let game_name = input.read_string::<0x3E0, Ascii>()?;
-        let debug_monitor_offset = input.read_bu32()?;
-        let debug_monitor_address = input.read_bu32()?;
-        let reserved1 = input.read_bu8_array::<0x18>()?;
-        let main_executable_offset = input.read_bu32()?;
-        let fst_offset = input.read_bu32()?;
-        let fst_size = input.read_bu32()?;
-        let fst_max_size = input.read_bu32()?;
-        let user_position = input.read_bu32()?;
-        let user_length = input.read_bu32()?;
-        let unknown = input.read_bu32()?;
-        let reserved2 = input.read_bu8_array::<0x4>()?;
+    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self, PicoriError> {
+        let console_id = input.deserialize_u8()?;
+        let game_code = input.deserialize_u8_array::<2>()?;
+        let country_code = input.deserialize_u8()?;
+        let maker_code = input.deserialize_u8_array::<2>()?;
+        let disc_id = input.deserialize_u8()?;
+        let version = input.deserialize_u8()?;
+        let audio_streaming = input.deserialize_u8()?;
+        let streaming_buffer_size = input.deserialize_u8()?;
+        let reserved0 = input.deserialize_u8_array::<0x12>()?;
+        let magic = input.deserialize_bu32()?;
+        let game_name = input.deserialize_str::<0x3E0, Ascii>()?;
+        let debug_monitor_offset = input.deserialize_bu32()?;
+        let debug_monitor_address = input.deserialize_bu32()?;
+        let reserved1 = input.deserialize_u8_array::<0x18>()?;
+        let main_executable_offset = input.deserialize_bu32()?;
+        let fst_offset = input.deserialize_bu32()?;
+        let fst_size = input.deserialize_bu32()?;
+        let fst_max_size = input.deserialize_bu32()?;
+        let user_position = input.deserialize_bu32()?;
+        let user_length = input.deserialize_bu32()?;
+        let unknown = input.deserialize_bu32()?;
+        let reserved2 = input.deserialize_u8_array::<0x4>()?;
 
         Ok(Self {
             console_id,
@@ -164,9 +163,9 @@ impl Bi2 {
 }
 
 impl Bi2 {
-    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
+    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self, PicoriError> {
         let values = input
-            .read_bu32_array::<{ 0x2000 / 4 }>()?
+            .deserialize_bu32_array::<{ 0x2000 / 4 }>()?
             .iter()
             .enumerate()
             .map(|(i, data)| (Bi2Index::from(i), *data))
@@ -188,12 +187,12 @@ pub struct Apploader {
 }
 
 impl Apploader {
-    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
-        let date = input.read_string::<0x10, Ascii>()?;
-        let entrypoint = input.read_bu32()?;
-        let size = input.read_bu32()?;
-        let trailer_size = input.read_bu32()?;
-        let unknown = input.read_bu32()?;
+    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self, PicoriError> {
+        let date = input.deserialize_str::<0x10, Ascii>()?;
+        let entrypoint = input.deserialize_bu32()?;
+        let size = input.deserialize_bu32()?;
+        let trailer_size = input.deserialize_bu32()?;
+        let unknown = input.deserialize_bu32()?;
 
         println!(
             "Apploader: date: {}, entrypoint: 0x{:08X}, size: 0x{:08X}, trailer_size: 0x{:08X}, \
@@ -202,11 +201,7 @@ impl Apploader {
         );
 
         let data_size = (size + trailer_size) as usize;
-        let mut data = Vec::<u8>::with_capacity(data_size);
-        unsafe {
-            data.set_len(data_size);
-        }
-        input.read_exact(&mut data)?;
+        let data = input.read_buffer(data_size)?;
 
         Ok(Self {
             date,
@@ -225,14 +220,14 @@ pub struct MainExecutable {
 }
 
 impl MainExecutable {
-    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
-        let base = input.stream_position()?;
-        let text_offsets = input.read_bu32_array::<7>()?;
-        let data_offsets = input.read_bu32_array::<11>()?;
-        let _ = input.read_bu32_array::<7>()?;
-        let _ = input.read_bu32_array::<11>()?;
-        let text_sizes = input.read_bu32_array::<7>()?;
-        let data_sizes = input.read_bu32_array::<11>()?;
+    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self, PicoriError> {
+        let base = input.position()?;
+        let text_offsets = input.deserialize_bu32_array::<7>()?;
+        let data_offsets = input.deserialize_bu32_array::<11>()?;
+        let _ = input.deserialize_bu32_array::<7>()?;
+        let _ = input.deserialize_bu32_array::<11>()?;
+        let text_sizes = input.deserialize_bu32_array::<7>()?;
+        let data_sizes = input.deserialize_bu32_array::<11>()?;
 
         let text_iter = text_offsets
             .iter()
@@ -250,12 +245,7 @@ impl MainExecutable {
             .ok_or(FormatError::InvalidHeader("unable to find executable size"))?;
 
         input.seek(SeekFrom::Start(base))?;
-        let mut data = Vec::<u8>::with_capacity(total_size as usize);
-        unsafe {
-            data.set_len(total_size as usize);
-        }
-        input.read_exact(&mut data)?;
-
+        let data = input.read_buffer(total_size as usize)?;
         Ok(Self { data })
     }
 }
@@ -290,10 +280,10 @@ enum _FstEntry {
 }
 
 impl _FstEntry {
-    pub fn deserialize<D: ReadExtension + Seek>(input: &mut D) -> Result<Self, PicoriError> {
-        let flag_or_name_offset = input.read_bu32()?;
-        let data_offset_or_parent = input.read_bu32()?;
-        let data_length_or_end = input.read_bu32()?;
+    pub fn deserialize<D: Deserializer + Seeker>(input: &mut D) -> Result<Self, PicoriError> {
+        let flag_or_name_offset = input.deserialize_bu32()?;
+        let data_offset_or_parent = input.deserialize_bu32()?;
+        let data_length_or_end = input.deserialize_bu32()?;
         let flag = flag_or_name_offset >> 24;
         let name_offset = flag_or_name_offset & 0x00ffffff;
 
@@ -313,15 +303,15 @@ impl _FstEntry {
     }
 }
 
-pub struct FSTDecoder<'x, Reader: ReadExtension + Seek> {
+pub struct FSTDecoder<'x, D: Deserializer + Seeker> {
     pub entries: Vec<FSTEntry>,
-    reader:      &'x mut Reader,
+    reader:      &'x mut D,
     fst_size:    usize,
 }
 
-impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
+impl<'x, D: Deserializer + Seeker> FSTDecoder<'x, D> {
     #[inline]
-    pub fn new(reader: &'x mut Reader, fst_size: usize) -> Result<Self, PicoriError> {
+    pub fn new(reader: &'x mut D, fst_size: usize) -> Result<Self, PicoriError> {
         let mut decoder = Self {
             entries: Vec::new(),
             reader,
@@ -332,9 +322,9 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
     }
 
     fn parse_entries(&mut self) -> Result<(), PicoriError> {
-        let _ = self.reader.read_bu32()?;
-        let _ = self.reader.read_bu32()?;
-        let root_count = self.reader.read_bu32()?;
+        let _ = self.reader.deserialize_bu32()?;
+        let _ = self.reader.deserialize_bu32()?;
+        let root_count = self.reader.deserialize_bu32()?;
         let entry_count = root_count as usize;
         ensure!(
             entry_count <= 0x4000,
@@ -347,10 +337,7 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
 
         let entry_size = 0x0C * entry_count;
         let name_table_size = self.fst_size - entry_size;
-
-        let mut string_table = Vec::<u8>::with_capacity(name_table_size);
-        unsafe { string_table.set_len(name_table_size) }
-        self.reader.read_exact(&mut string_table)?;
+        let string_table = self.reader.read_buffer(name_table_size)?;
 
         for (i, entry) in entries.iter().enumerate() {
             self.entries.push(match entry {
@@ -381,15 +368,17 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
             FSTEntry::File { offset, size, .. } => {
                 self.reader.seek(SeekFrom::Start(*offset as u64))?;
 
+                todo!()
+                /*
                 let mut buffer = MaybeUninit::<[u8; 0x1000]>::uninit();
                 let mut remaining = *size as isize;
                 while remaining > 0 {
-                    let read = self.reader.read(unsafe { &mut *buffer.as_mut_ptr() })?;
+                    let read = self.reader.read_into_buffer(unsafe { &mut *buffer.as_mut_ptr() })?;
                     writer.write(unsafe { &buffer.assume_init() })?;
                     remaining -= read as isize;
                 }
 
-                Ok(())
+                Ok(())*/
             },
             _ => Err(FormatError::InvalidData("not a file").into()),
         }
@@ -400,10 +389,7 @@ impl<'x, Reader: ReadExtension + Seek> FSTDecoder<'x, Reader> {
         match entry {
             FSTEntry::File { offset, size, .. } => {
                 self.reader.seek(SeekFrom::Start(*offset as u64))?;
-                let mut data = Vec::<u8>::with_capacity(*size as usize);
-                unsafe { data.set_len(*size as usize) }
-                self.reader.read_exact(&mut data)?;
-                Ok(data)
+                Ok(self.reader.read_buffer(*size as usize)?)
             },
             _ => Err(FormatError::InvalidData("not a file").into()),
         }

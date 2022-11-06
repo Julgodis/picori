@@ -1,60 +1,58 @@
-use std::io::{Error, ErrorKind, Read, Seek, SeekFrom};
+use std::io::Read;
+use std::mem::MaybeUninit;
 
-use crate::error::ensure;
+use crate::PicoriError;
 
-pub struct SliceReader<'a> {
-    slice:  &'a [u8],
-    index:  u64,
-    length: u64,
+pub trait Reader {
+    fn read_buffer(&mut self, size: usize) -> Result<Vec<u8>, PicoriError>;
+    fn read_into_buffer(&mut self, buffer: &mut [u8]) -> Result<(), PicoriError>;
+    fn read_fixed_buffer<const L: usize>(&mut self) -> Result<[u8; L], PicoriError>;
+
+    /// Read `L` items of type `T` from this reader or `L` * `sizeof(T)` bytes.
+    ///
+    /// In the future, this will be implemented using `read_fixed_buffer`
+    /// instead of require the trait implementor to implement it. This is
+    /// due to the requirement of feature `generic_const_expr` which is not
+    /// yet stable.
+    fn read_fixed_buffer_cge<T: Sized, const L: usize>(&mut self) -> Result<[T; L], PicoriError>;
 }
 
-impl<'a> SliceReader<'a> {
-    pub fn new(slice: &'a [u8]) -> Self {
-        Self {
-            slice,
-            index: 0,
-            length: slice.len() as u64,
-        }
-    }
-}
-
-impl<'a> Read for SliceReader<'a> {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
-        let wanted = buf.len() as u64;
-        let remaining = self.length - self.index;
-        ensure!(
-            remaining >= wanted,
-            Error::new(ErrorKind::UnexpectedEof, "Unexpected EOF")
-        );
-
-        let start = self.index as usize;
-        let end = (self.index + wanted) as usize;
-        buf.copy_from_slice(&self.slice[start..end]);
-        self.index += wanted;
-        Ok(wanted as usize)
-    }
-}
-
-impl<'a> Seek for SliceReader<'a> {
-    fn seek(&mut self, pos: SeekFrom) -> Result<u64, Error> {
-        let new_index = match pos {
-            SeekFrom::Start(pos) => pos as i64,
-            SeekFrom::End(pos) => (self.length as i64) + pos,
-            SeekFrom::Current(pos) => (self.index as i64) + pos,
+impl<Base> Reader for Base
+where
+    Base: Read + Sized,
+{
+    fn read_buffer(&mut self, size: usize) -> Result<Vec<u8>, PicoriError> {
+        let mut data = unsafe {
+            let mut data = Vec::with_capacity(size as usize);
+            data.set_len(size as usize);
+            data
         };
 
-        ensure!(
-            new_index >= 0,
-            Error::new(ErrorKind::InvalidInput, "Invalid seek position")
-        );
+        self.read_exact(&mut data)?;
+        Ok(data)
+    }
 
-        let new_index = new_index as u64;
-        ensure!(
-            new_index <= self.length,
-            Error::new(ErrorKind::UnexpectedEof, "Unexpected EOF")
-        );
+    #[inline]
+    fn read_into_buffer(&mut self, buffer: &mut [u8]) -> Result<(), PicoriError> {
+        self.read_exact(buffer)?;
+        Ok(())
+    }
 
-        self.index = new_index;
-        Ok(self.index)
+    #[inline]
+    fn read_fixed_buffer<const L: usize>(&mut self) -> Result<[u8; L], PicoriError> {
+        let mut buf = [0u8; L];
+        self.read_exact(&mut buf)?;
+        Ok(buf)
+    }
+
+    fn read_fixed_buffer_cge<T: Sized, const L: usize>(&mut self) -> Result<[T; L], PicoriError> {
+        let byte_length = L * core::mem::size_of::<T>();
+        let mut storage = MaybeUninit::<[T; L]>::uninit();
+        let reference = unsafe { &mut *storage.as_mut_ptr() };
+        let buf = unsafe {
+            std::slice::from_raw_parts_mut(reference.as_mut_ptr() as *mut u8, byte_length)
+        };
+        self.read_exact(buf)?;
+        return Ok(unsafe { storage.assume_init() });
     }
 }

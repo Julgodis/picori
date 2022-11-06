@@ -1,15 +1,10 @@
-use std::io::{Read, Seek};
-
-use crate::helper::read_extension::ReadExtension;
+use crate::helper::{Deserializer, Seeker};
 use crate::PicoriError;
 
 pub struct Rel {}
 
 impl Rel {
-    pub fn from_bytes<Reader>(_reader: &mut Reader) -> Result<Self, PicoriError>
-    where
-        Reader: Read + Seek,
-    {
+    pub fn from_bytes<D: Deserializer + Seeker>(_reader: &mut D) -> Result<Self, PicoriError> {
         // let module = reader.read_bu32()?;
         // let _next = reader.read_bu32()?; // should be 0, used at runtime
         // let _prev = reader.read_bu32()?; // should be 0, used at runtime
@@ -57,9 +52,6 @@ impl Rel {
     }
 }
 
-pub fn from_bytes<Reader>(reader: &mut Reader) -> Result<Rel, PicoriError>
-where
-    Reader: ReadExtension + Seek,
-{
+pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Rel, PicoriError> {
     Rel::from_bytes(reader)
 }

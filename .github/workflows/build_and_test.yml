@@ -1,4 +1,4 @@
-name: Build & Test & Fmt & Clippy
+name: Build & Test
 
 on:
   push:
@@ -38,9 +38,3 @@ jobs:
 
       - name: test
         run: cargo test --verbose
-
-      - name: fmt
-        run: cargo fmt -- --check --verbose
-
-      - name: clippy
-        run: cargo clippy --verbose -- -D warnings

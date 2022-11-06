@@ -27,17 +27,16 @@
 //!
 //! TODO: Write this section.
 
-use std::io::{Seek, SeekFrom};
+use std::io::Cursor;
 use std::result::Result;
 
 use itertools::{chain, izip};
 
 use crate::ensure;
-use crate::error::{FormatError, PicoriError};
 use crate::helper::alignment::AlignPowerOfTwo;
-use crate::helper::read_extension::ReadExtension;
-use crate::helper::reader::SliceReader;
+use crate::helper::error::{FormatError, PicoriError};
 use crate::helper::take_last_n::TakeLastN;
+use crate::helper::{Deserializer, Seeker};
 
 /// Plain data of a `.dol` header converted to native endianness.
 #[derive(Debug, Clone)]
@@ -146,14 +145,11 @@ pub struct Dol {
 
 impl RomCopyInfo {
     /// Deserialize [`RomCopyInfo`] from a [`ReadExtension`].
-    fn from_bytes<Reader>(reader: &mut Reader) -> Result<Self, PicoriError>
-    where
-        Reader: ReadExtension,
-    {
+    fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Self, PicoriError> {
         let rom_copy_info: Result<_, PicoriError> = {
-            let rom_address = reader.read_bu32()?;
-            let ram_address = reader.read_bu32()?;
-            let size = reader.read_bu32()?;
+            let rom_address = reader.deserialize_bu32()?;
+            let ram_address = reader.deserialize_bu32()?;
+            let size = reader.deserialize_bu32()?;
             Ok(RomCopyInfo {
                 rom_address,
                 ram_address,
@@ -167,13 +163,10 @@ impl RomCopyInfo {
 
 impl BssInitInfo {
     /// Deserialize [`BssInitInfo`] from a [`ReadExtension`].
-    fn from_bytes<Reader>(reader: &mut Reader) -> Result<Self, PicoriError>
-    where
-        Reader: ReadExtension,
-    {
+    fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Self, PicoriError> {
         let bss_init_info: Result<_, PicoriError> = {
-            let ram_address = reader.read_bu32()?;
-            let size = reader.read_bu32()?;
+            let ram_address = reader.deserialize_bu32()?;
+            let size = reader.deserialize_bu32()?;
             Ok(BssInitInfo { ram_address, size })
         };
 
@@ -187,7 +180,7 @@ fn rom_copy_info_search(data: &[u8], address: u32) -> Option<Vec<RomCopyInfo>> {
     let rom_copy_info = data
         .take_last_n(0x200)
         .windows(12)
-        .map(|x| RomCopyInfo::from_bytes(&mut SliceReader::new(x)))
+        .map(|x| RomCopyInfo::from_bytes(&mut Cursor::new(x)))
         .filter_map(|x| x.ok())
         .skip_while(|x| x.rom_address != address || x.ram_address != address)
         .step_by(12)
@@ -207,7 +200,7 @@ fn bss_init_info_search(data: &[u8], address: u32) -> Option<Vec<BssInitInfo>> {
     let bss_init_info = data
         .take_last_n(0x200)
         .windows(8)
-        .map(|x| BssInitInfo::from_bytes(&mut SliceReader::new(x)))
+        .map(|x| BssInitInfo::from_bytes(&mut Cursor::new(x)))
         .filter_map(|x| x.ok())
         .skip_while(|x| x.ram_address != address)
         .step_by(8)
@@ -222,7 +215,7 @@ fn bss_init_info_search(data: &[u8], address: u32) -> Option<Vec<BssInitInfo>> {
 }
 
 /// Guess section name using kind and index.
-fn section_name(kind: SectionKind, index: usize) -> &'static str {
+pub fn section_name(kind: SectionKind, index: usize) -> &'static str {
     match kind {
         SectionKind::Text => match index {
             0 => ".init",
@@ -232,7 +225,7 @@ fn section_name(kind: SectionKind, index: usize) -> &'static str {
             4 => ".text.4",
             5 => ".text.5",
             6 => ".text.6",
-            _ => panic!("invalid text section index"),
+            _ => unreachable!(),
         },
         SectionKind::Data => match index {
             0 => "extab_",
@@ -246,20 +239,20 @@ fn section_name(kind: SectionKind, index: usize) -> &'static str {
             8 => ".data8",
             9 => ".data9",
             10 => ".data10",
-            _ => panic!("invalid data section index"),
+            _ => unreachable!(),
         },
         SectionKind::Bss => match index {
             0 => ".bss",
             1 => ".sbss",
             2 => ".sbss2",
-            _ => panic!("invalid bss section index"),
+            _ => unreachable!(),
         },
     }
 }
 
 impl Section {
-    fn new<Reader>(
-        reader: &mut Reader,
+    fn new<D>(
+        reader: &mut D,
         kind: SectionKind,
         index: usize,
         offset: u32,
@@ -268,29 +261,23 @@ impl Section {
         aligned_size: u32,
     ) -> Result<Self, PicoriError>
     where
-        Reader: ReadExtension + Seek,
+        D: Deserializer + Seeker,
     {
-        ensure!(
-            size > 0,
-            FormatError::InvalidData("invalid section size (size of 0)")
-        );
-        ensure!(
-            size <= 0x2000000,
-            FormatError::InvalidData("invalid section size (too large)")
-        );
+        let name = section_name(kind, index);
+        let data = if size == 0 {
+            Vec::new()
+        } else {
+            ensure!(
+                size <= 0x2000000,
+                FormatError::InvalidData("invalid section size (too large)")
+            );
 
-        let mut data = unsafe {
-            let mut data = Vec::with_capacity(size as usize);
-            data.set_len(size as usize);
-            data
+            reader.read_buffer(size as usize)?
         };
-
-        reader.seek(SeekFrom::Start(offset as u64))?;
-        reader.read_exact(data.as_mut_slice())?;
 
         Ok(Self {
             kind,
-            name: section_name(kind, index),
+            name,
             address,
             size,
             aligned_size,
@@ -306,19 +293,17 @@ impl Section {
 /// information from the `.dol` file. Additionaly, there is information included
 /// about [`__rom_copy_info`][`Dol::rom_copy_info`] and
 /// [`__bss_init_info`][`Dol::bss_init_info`] if they are available.
-pub fn from_bytes<Reader>(reader: &mut Reader) -> Result<Dol, PicoriError>
-where
-    Reader: ReadExtension + Seek,
-{
-    let text_offset = reader.read_bu32_array::<7>()?;
-    let data_offset = reader.read_bu32_array::<11>()?;
-    let text_address = reader.read_bu32_array::<7>()?;
-    let data_address = reader.read_bu32_array::<11>()?;
-    let text_size = reader.read_bu32_array::<7>()?;
-    let data_size = reader.read_bu32_array::<11>()?;
-    let bss_address = reader.read_bu32()?;
-    let bss_size = reader.read_bu32()?;
-    let entry_point = reader.read_bu32()?;
+pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol, PicoriError> {
+    let text_offset = reader.deserialize_bu32_array::<7>()?;
+    let data_offset = reader.deserialize_bu32_array::<11>()?;
+    let text_address = reader.deserialize_bu32_array::<7>()?;
+    let data_address = reader.deserialize_bu32_array::<11>()?;
+    let text_size = reader.deserialize_bu32_array::<7>()?;
+    let data_size = reader.deserialize_bu32_array::<11>()?;
+    let bss_address = reader.deserialize_bu32()?;
+    let bss_size = reader.deserialize_bu32()?;
+    let entry_point = reader.deserialize_bu32()?;
+    let _ = reader.deserialize_bu32_array::<7>()?;
 
     let text_sections = izip!(text_offset.iter(), text_address.iter(), text_size.iter());
     let text_sections = text_sections
@@ -331,7 +316,7 @@ where
         .map(|(i, x)| (SectionKind::Data, i, x));
 
     let mut sections: Vec<Section> = chain!(text_sections, data_sections)
-        .filter(|(_, _, x)| x.1 > &0 && x.2 > &0)
+        .filter(|(_, _, x)| x.1 > &0)
         .map(|(kind, index, (offset, address, size))| {
             Section::new(reader, kind, index, *offset, *address, *size, *size)
         })
@@ -355,6 +340,11 @@ where
     // `.bss` section and use the size from the header (which is probably
     // not correct).
     if let Some(bss_init_info) = &bss_init_info {
+        ensure!(
+            bss_init_info.len() <= 3,
+            FormatError::InvalidData("invalid bss init info (too many sections)")
+        );
+
         let bss_sections = bss_init_info
             .iter()
             .enumerate()
@@ -433,10 +423,7 @@ impl Dol {
     /// convenience function, it is equivalent to calling [`Dol::from_bytes`]
     /// with similar arguments.
     #[inline]
-    pub fn from_bytes<Reader>(reader: &mut Reader) -> Result<Dol, PicoriError>
-    where
-        Reader: ReadExtension + Seek,
-    {
+    pub fn from_bytes<D: Deserializer + Seeker>(reader: &mut D) -> Result<Dol, PicoriError> {
         from_bytes(reader)
     }
 }
