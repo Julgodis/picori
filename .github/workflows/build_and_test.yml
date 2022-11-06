@@ -3,35 +3,35 @@ name: Cargo Build & Test
 on: [push, pull_request]
 
 env:
-    CARGO_TERM_COLOR: always
+  CARGO_TERM_COLOR: always
 
 jobs:
-    build_and_test:
-        name: picori - latest
-        runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                toolchain:
-                    - stable
-                    - beta
-                    - nightly
-        steps:
-            - uses: actions/checkout@v3
-            - name: install
-              uses: actions-rs/toolchain@v1
-              with:
-                  toolchain: ${{ matrix.toolchain }}
-                  override: true
-                  components: rustfmt, clippy
+  build_and_test:
+    name: picori - latest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+          - beta
+          - nightly
+    steps:
+      - uses: actions/checkout@v3
+      - name: install
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+          components: rustfmt, clippy
 
-            - name: build
-            - run: cargo build --verbose
+      - name: build
+      - run: cargo build --verbose
 
-            - name: test
-            - run: cargo test --verbose
+      - name: test
+      - run: cargo test --verbose
 
-            - name: fmt
-            - run: cargo fmt -- --check --verbose
+      - name: fmt
+      - run: cargo fmt -- --check --verbose
 
-            - name: clippy
-            - run: cargo clippy --verbose -- -D warnings
+      - name: clippy
+      - run: cargo clippy --verbose -- -D warnings
