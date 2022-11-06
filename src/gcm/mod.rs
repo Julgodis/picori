@@ -29,8 +29,6 @@ pub mod boot;
 pub mod executable;
 pub mod fst;
 
-use std::io::SeekFrom;
-
 #[doc(inline)]
 pub use apploader::*;
 #[doc(inline)]
@@ -82,12 +80,10 @@ impl Gcm {
             ParseProblem::InvalidData("invalid apploader", std::panic::Location::current())
         );
 
-        reader.seek(SeekFrom::Start(
-            position + boot.main_executable_offset as u64,
-        ))?;
+        reader.goto(position + boot.main_executable_offset as u64)?;
         let executable = Executable::from_binary(reader)?;
 
-        reader.seek(SeekFrom::Start(position + boot.fst_offset as u64))?;
+        reader.goto(position + boot.fst_offset as u64)?;
         let fst = Fst::from_binary(reader, boot.fst_size as usize)?;
 
         Ok(Gcm {

@@ -19,10 +19,11 @@
 //!
 //! ```no_run
 //! # use std::fs::File;
+//! # use std::fs::OpenOptions;
 //! # use picori::Result;
 //! fn main() -> Result<()> {
 //!     let mut input = File::open("compact_disc.iso")?;
-//!     let mut reader = picori::CisoReader::new(&mut file)?;
+//!     let mut reader = picori::CisoReader::new(&mut input)?;
 //!
 //!     let mut output = OpenOptions::new()
 //!         .write(true)
@@ -33,7 +34,8 @@
 //! }
 //! ```
 
-use std::io::{SeekFrom, Write};
+use std::io::Write;
+use std::panic::Location;
 
 use crate::helper::{ParseProblem, Parser, ProblemLocation, Seeker};
 use crate::Result;
@@ -49,23 +51,21 @@ struct Header {
 
 impl Header {
     pub fn from_binary<D: Parser + Seeker>(input: &mut D) -> Result<Self> {
-        let magic = input.deserialize_bu32()?;
-        let block_size = input.deserialize_bu32()? as usize;
+        let magic = input.bu32()?;
+        let block_size = input.bu32()? as usize;
         if magic != MAGIC {
-            return Err(ParseProblem::InvalidMagic(
-                "expected: 0x4F534943",
-                std::panic::Location::current(),
-            )
-            .into());
+            return Err(
+                ParseProblem::InvalidMagic("expected: 0x4F534943", Location::current()).into(),
+            );
         } else if block_size == 0 || block_size > 0x8000000 {
             return Err(ParseProblem::InvalidRange(
                 "0 < block size <= 0x8000000",
-                std::panic::Location::current(),
+                Location::current(),
             )
             .into());
         }
 
-        let block_map = input.deserialize_u8_array::<{ 0x8000 - 8 }>()?;
+        let block_map = input.u8_array::<{ 0x8000 - 8 }>()?;
         let block_total = block_map
             .iter()
             .enumerate()
@@ -90,18 +90,12 @@ impl Header {
 
             Ok(Header { block_size, blocks })
         } else {
-            Err(
-                ParseProblem::InvalidHeader("invalid block map", std::panic::Location::current())
-                    .into(),
-            )
+            Err(ParseProblem::InvalidHeader("invalid block map", Location::current()).into())
         }
     }
 }
 
 /// Reader for [CISO][`crate::ciso`] files.
-///
-/// # Examples
-/// TODO: Add examples
 pub struct CisoReader<'reader, D: Parser + Seeker> {
     header:      Header,
     reader:      &'reader mut D,
@@ -132,8 +126,7 @@ impl<'reader, D: Parser + Seeker> CisoReader<'reader, D> {
         let (offset, has_data) = self.header.blocks[index];
         let mut buffer = vec![0; self.header.block_size];
         if has_data {
-            self.reader
-                .seek(SeekFrom::Start(self.data_offset + offset))?;
+            self.reader.goto(self.data_offset + offset)?;
             self.reader.read_into(&mut buffer)?;
         }
         Ok(buffer)
@@ -147,9 +140,9 @@ impl<'reader, D: Parser + Seeker> CisoReader<'reader, D> {
         }
     }
 
-    /// Decompress all [CISO][`crate::ciso`] block and write the data to a [`std::io::Write`]. If
-    /// you need to know the final size of the decompressed file, use
-    /// [`CisoReader::total_size`].
+    /// Decompress all [CISO][`crate::ciso`] block and write the data to a
+    /// [`std::io::Write`]. If you need to know the final size of the
+    /// decompressed file, use [`CisoReader::total_size`].
     pub fn decompress<Writer: Write>(&'reader mut self, writer: &mut Writer) -> Result<()> {
         self.blocks().try_for_each(|x| match x {
             Ok(x) => Ok(writer.write_all(&x)?),

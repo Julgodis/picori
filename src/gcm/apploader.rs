@@ -30,11 +30,11 @@ pub struct Apploader {
 impl Apploader {
     /// Parse GCM Apploader.
     pub fn from_binary<D: Parser>(input: &mut D) -> Result<Self> {
-        let date = input.deserialize_str::<0x10, Ascii>()?;
-        let entry_point = input.deserialize_bu32()?;
-        let size = input.deserialize_bu32()?;
-        let trailer_size = input.deserialize_bu32()?;
-        let unknown = input.deserialize_bu32()?;
+        let date = input.str::<0x10, Ascii>()?;
+        let entry_point = input.bu32()?;
+        let size = input.bu32()?;
+        let trailer_size = input.bu32()?;
+        let unknown = input.bu32()?;
         let data_size = (size + trailer_size) as usize;
         let data = input.read_as_vec(data_size)?;
 

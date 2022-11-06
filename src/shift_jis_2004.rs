@@ -30,9 +30,10 @@
 
 use std::borrow::Borrow;
 use std::marker::PhantomData;
+use std::panic::Location;
 
 use crate::error::DecodingProblem::*;
-use crate::helper::{ensure, ParseStringEncoding};
+use crate::helper::{ensure, ParseStringEncoding, ProblemLocation};
 use crate::jis_x_0201::Decoder as JisX0201Decoder;
 use crate::Result;
 
@@ -84,14 +85,19 @@ where
             match byte {
                 // First byte of a double-byte JIS X 0208 or JIS X 0213 character
                 0x81..=0x9F | 0xE0..=0xFC => {
-                    let next = iter.next().ok_or(UnexpectedEndOfData)?;
+                    let next = iter
+                        .next()
+                        .ok_or_else(|| UnexpectedEndOfData(Location::current()))?;
                     let next = *next.borrow();
                     let (first, last, offset) = internal::SJIS_2004_UTF8_T[byte as usize];
-                    ensure!(next >= first && next <= last, InvalidByte(next));
+                    ensure!(
+                        next >= first && next <= last,
+                        InvalidByte(next, Location::current())
+                    );
                     let relative = (next - first) as usize;
                     let index = offset + relative;
                     let value = internal::SJIS_2004_UTF8_S[index];
-                    ensure!(value != 0, InvalidByte(next));
+                    ensure!(value != 0, InvalidByte(next, Location::current()));
                     if value & 0x8000_0000 != 0 {
                         let index = (value & 0x7fff_ffff) as usize;
                         let (first, second) = internal::SJIS_2004_UTF8_D[index];
@@ -104,7 +110,7 @@ where
                     }
                 },
                 // Invalid as first byte
-                _ => Err(InvalidByte(byte).into()),
+                _ => Err(InvalidByte(byte, Location::current()).into()),
             }
         } else {
             Ok(Next::EndOfInput)

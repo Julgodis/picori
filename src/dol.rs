@@ -21,7 +21,7 @@
 //! }
 //! ```
 
-use std::io::{Cursor, SeekFrom};
+use std::io::Cursor;
 
 use crate::helper::alignment::AlignPowerOfTwo;
 use crate::helper::{ensure, ParseProblem, Parser, ProblemLocation, Seeker};
@@ -177,9 +177,9 @@ impl RomCopyInfo {
     /// Parse [`RomCopyInfo`] from binary stream.
     fn from_binary<D: Parser + Seeker>(reader: &mut D) -> Result<Self> {
         let rom_copy_info: Result<_> = {
-            let rom_address = reader.deserialize_bu32()?;
-            let ram_address = reader.deserialize_bu32()?;
-            let size = reader.deserialize_bu32()?;
+            let rom_address = reader.bu32()?;
+            let ram_address = reader.bu32()?;
+            let size = reader.bu32()?;
             Ok(RomCopyInfo {
                 rom_address,
                 ram_address,
@@ -197,8 +197,8 @@ impl BssInitInfo {
     /// Parse [`BssInitInfo`] from binary stream.
     fn from_binary<D: Parser + Seeker>(reader: &mut D) -> Result<Self> {
         let bss_init_info: Result<_> = {
-            let ram_address = reader.deserialize_bu32()?;
-            let size = reader.deserialize_bu32()?;
+            let ram_address = reader.bu32()?;
+            let size = reader.bu32()?;
             Ok(BssInitInfo { ram_address, size })
         };
 
@@ -301,7 +301,7 @@ impl Section {
                 )
             );
 
-            reader.seek(SeekFrom::Start(base + self.offset.unwrap() as u64))?;
+            reader.goto(base + self.offset.unwrap() as u64)?;
             self.data = reader.read_as_vec(self.size as usize)?;
         }
 
@@ -347,22 +347,22 @@ impl Section {
 
 impl Dol {
     /// Parse [`Dol`] from binary stream.
-    /// 
+    ///
     /// This function _should_ not panic and if any error occurs, it will return
     /// [`Err`] of type [`Error`][`crate::Error`]/[`ParseProblem`].
     pub fn from_binary<D: Parser + Seeker>(reader: &mut D) -> Result<Dol> {
         let base = reader.position()?;
 
-        let text_offset = reader.deserialize_bu32_array::<7>()?;
-        let data_offset = reader.deserialize_bu32_array::<11>()?;
-        let text_address = reader.deserialize_bu32_array::<7>()?;
-        let data_address = reader.deserialize_bu32_array::<11>()?;
-        let text_size = reader.deserialize_bu32_array::<7>()?;
-        let data_size = reader.deserialize_bu32_array::<11>()?;
-        let bss_address = reader.deserialize_bu32()?;
-        let bss_size = reader.deserialize_bu32()?;
-        let entry_point = reader.deserialize_bu32()?;
-        let _ = reader.deserialize_bu32_array::<7>()?;
+        let text_offset = reader.bu32_array::<7>()?;
+        let data_offset = reader.bu32_array::<11>()?;
+        let text_address = reader.bu32_array::<7>()?;
+        let data_address = reader.bu32_array::<11>()?;
+        let text_size = reader.bu32_array::<7>()?;
+        let data_size = reader.bu32_array::<11>()?;
+        let bss_address = reader.bu32()?;
+        let bss_size = reader.bu32()?;
+        let entry_point = reader.bu32()?;
+        let _ = reader.bu32_array::<7>()?;
 
         let text_sections = text_offset
             .iter()
@@ -410,7 +410,7 @@ impl Dol {
             .map(|(offset, size)| offset.checked_add(*size).unwrap_or(0))
             .max()
             .unwrap_or(0);
-        reader.seek(SeekFrom::Start(base + end_of_dol as u64))?;
+        reader.goto(base + end_of_dol as u64)?;
 
         let init = sections.iter().find(|x| x.name == ".init");
         let rom_copy_info =
@@ -483,24 +483,27 @@ impl Dol {
         })
     }
 
-    /// Returns the entry point of the DOL file. This is the address of the
-    /// first instruction that will be executed. The section containing the
-    /// entry point can be found using [`Dol::section_by_address`]. Entry point
-    /// is also available via direct access to the [`Dol::header`].
+    /// Returns the entry point of the [DOL][`crate::dol`] file. This is the
+    /// address of the first instruction that will be executed. The section
+    /// containing the entry point can be found using
+    /// [`Dol::section_by_address`]. Entry point is also available via
+    /// direct access to the [`Dol::header`].
     #[inline]
     pub fn entry_point(&self) -> u32 { self.header.entry_point }
 
-    /// Returns an [`Some(&Section)`] if the DOL file contains a section with
-    /// the given name `name` or [`None`] otherwise. Section names are not
-    /// information provided by the `.dol` format, instead we assign names
-    /// based on the section kind [`SectionKind`] and the index of the section.
+    /// Returns an [`Some(&Section)`] if the [DOL][`crate::dol`] file contains a
+    /// section with the given name `name` or [`None`] otherwise. Section
+    /// names are not information provided by the `.dol` format, instead we
+    /// assign names based on the section kind [`SectionKind`] and the index
+    /// of the section.
     #[inline]
     pub fn section_by_name(&self, name: &str) -> Option<&Section> {
         self.sections.iter().find(|x| x.name == name)
     }
 
-    /// Returns an [`Some(&Section)`] if the DOL file contains a section with
-    /// that contains the given address `address` or [`None`] otherwise.
+    /// Returns an [`Some(&Section)`] if the [DOL][`crate::dol`] file contains a
+    /// section with that contains the given address `address` or [`None`]
+    /// otherwise.
     #[inline]
     pub fn section_by_address(&self, address: u32) -> Option<&Section> {
         self.sections

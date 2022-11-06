@@ -114,7 +114,7 @@ impl Bi2 {
     /// Parse GCM BI2.
     pub fn from_binary<D: Parser>(input: &mut D) -> Result<Self> {
         let options = input
-            .deserialize_bu32_array::<{ 0x2000 / 4 }>()?
+            .bu32_array::<{ 0x2000 / 4 }>()?
             .iter()
             .enumerate()
             .map(|(i, data)| (Bi2Options::from(i), *data))

@@ -2,7 +2,6 @@
 //! information about the file structure of the GameCube disc, i.e. the file
 //! names and their locations.
 
-use std::io::SeekFrom;
 use std::path::PathBuf;
 
 use crate::error::ParseProblem;
@@ -53,9 +52,9 @@ enum RawEntry {
 
 impl RawEntry {
     pub fn new<D: Parser + Seeker>(input: &mut D) -> Result<Self> {
-        let flag_or_name_offset = input.deserialize_bu32()?;
-        let data_offset_or_parent = input.deserialize_bu32()?;
-        let data_length_or_end = input.deserialize_bu32()?;
+        let flag_or_name_offset = input.bu32()?;
+        let data_offset_or_parent = input.bu32()?;
+        let data_length_or_end = input.bu32()?;
         let flag = flag_or_name_offset >> 24;
         let name_offset = flag_or_name_offset & 0x00ffffff;
 
@@ -88,9 +87,9 @@ impl Fst {
     pub fn from_binary<D: Parser + Seeker>(reader: &mut D, fst_size: usize) -> Result<Fst> {
         let base = reader.position()?;
 
-        let _ = reader.deserialize_bu32()?;
-        let _ = reader.deserialize_bu32()?;
-        let root_count = reader.deserialize_bu32()?;
+        let _ = reader.bu32()?;
+        let _ = reader.bu32()?;
+        let root_count = reader.bu32()?;
         let entry_count = root_count as usize;
         ensure!(
             entry_count <= 0x4000,
@@ -100,7 +99,7 @@ impl Fst {
             )
         );
 
-        reader.seek(SeekFrom::Start(base))?;
+        reader.goto(base)?;
         let temp_entries = (0..entry_count)
             .map(|_| RawEntry::new(reader))
             .collect::<Result<Vec<_>>>()?;

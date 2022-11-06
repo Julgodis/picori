@@ -1,8 +1,6 @@
 //! [GCM][`crate::gcm`] executable file. This is the [DOL][`crate::dol`] file
 //! that contains the actual game code.
 
-use std::io::SeekFrom;
-
 use crate::error::ParseProblem;
 use crate::helper::{Parser, ProblemLocation, Seeker};
 use crate::Result;
@@ -17,12 +15,12 @@ impl Executable {
     /// Parse [GCM][`crate::gcm`] executable ([DOL][`crate::dol`]) from binary.
     pub fn from_binary<D: Parser + Seeker>(input: &mut D) -> Result<Self> {
         let base = input.position()?;
-        let text_offsets = input.deserialize_bu32_array::<7>()?;
-        let data_offsets = input.deserialize_bu32_array::<11>()?;
-        let _ = input.deserialize_bu32_array::<7>()?;
-        let _ = input.deserialize_bu32_array::<11>()?;
-        let text_sizes = input.deserialize_bu32_array::<7>()?;
-        let data_sizes = input.deserialize_bu32_array::<11>()?;
+        let text_offsets = input.bu32_array::<7>()?;
+        let data_offsets = input.bu32_array::<11>()?;
+        let _ = input.bu32_array::<7>()?;
+        let _ = input.bu32_array::<11>()?;
+        let text_sizes = input.bu32_array::<7>()?;
+        let data_sizes = input.bu32_array::<11>()?;
 
         let text_iter = text_offsets
             .iter()
@@ -41,7 +39,7 @@ impl Executable {
             )
         })?;
 
-        input.seek(SeekFrom::Start(base))?;
+        input.goto(base)?;
         let data = input.read_as_vec(total_size as usize)?;
         Ok(Self { data })
     }

@@ -23,8 +23,4 @@ pub enum ParseProblem {
     /// Unsupported version.
     #[error("unsupported version: {0} at {1}")]
     UnsupportedVersion(usize, &'static Location<'static>),
-
-    /// Reading data failed.
-    #[error("read failed: {0} bytes ({1}) at {2}")]
-    ReadFailed(usize, #[source] std::io::Error, &'static Location<'static>),
 }

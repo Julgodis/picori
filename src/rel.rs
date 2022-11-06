@@ -20,8 +20,6 @@
 //! }
 //! ```
 
-use std::io::SeekFrom;
-
 use crate::error::ParseProblem;
 use crate::helper::{ensure, Parser, ProblemLocation, Seeker};
 use crate::Result;
@@ -175,30 +173,30 @@ impl Rel {
     /// [`Err`] of type [`Error`][`crate::Error`]/[`ParseProblem`].
     pub fn from_binary<D: Parser + Seeker>(mut reader: D) -> Result<Self> {
         let base = reader.position()?;
-        let module = reader.deserialize_bu32()?;
-        let _next = reader.deserialize_bu32()?; // should be 0, used at runtime
-        let _prev = reader.deserialize_bu32()?; // should be 0, used at runtime
-        let section_count = reader.deserialize_bu32()?;
-        let section_offset = reader.deserialize_bu32()?;
-        let name_offset = reader.deserialize_bu32()?;
-        let name_size = reader.deserialize_bu32()?;
-        let version = reader.deserialize_bu32()?;
-        let _bss_size = reader.deserialize_bu32()?;
-        let relocation_offset = reader.deserialize_bu32()?;
-        let import_offset = reader.deserialize_bu32()?;
-        let import_size = reader.deserialize_bu32()?;
-        let prolog_section = reader.deserialize_u8()?;
-        let epilog_section = reader.deserialize_u8()?;
-        let unresolved_section = reader.deserialize_u8()?;
-        let _bss_section = reader.deserialize_u8()?; // should be 0, used at runtime
-        let prolog_offset = reader.deserialize_bu32()?;
-        let epilog_offset = reader.deserialize_bu32()?;
-        let unresolved_offset = reader.deserialize_bu32()?;
+        let module = reader.bu32()?;
+        let _next = reader.bu32()?; // should be 0, used at runtime
+        let _prev = reader.bu32()?; // should be 0, used at runtime
+        let section_count = reader.bu32()?;
+        let section_offset = reader.bu32()?;
+        let name_offset = reader.bu32()?;
+        let name_size = reader.bu32()?;
+        let version = reader.bu32()?;
+        let _bss_size = reader.bu32()?;
+        let relocation_offset = reader.bu32()?;
+        let import_offset = reader.bu32()?;
+        let import_size = reader.bu32()?;
+        let prolog_section = reader.u8()?;
+        let epilog_section = reader.u8()?;
+        let unresolved_section = reader.u8()?;
+        let _bss_section = reader.u8()?; // should be 0, used at runtime
+        let prolog_offset = reader.bu32()?;
+        let epilog_offset = reader.bu32()?;
+        let unresolved_offset = reader.bu32()?;
 
         // version 2
         let (align, bss_align) = if version >= 2 {
-            let align = reader.deserialize_bu32()?;
-            let bss_align = reader.deserialize_bu32()?;
+            let align = reader.bu32()?;
+            let bss_align = reader.bu32()?;
             (align, bss_align)
         } else {
             (1, 1)
@@ -206,7 +204,7 @@ impl Rel {
 
         // version 3
         let fix_size = if version >= 3 {
-            reader.deserialize_bu32()?
+            reader.bu32()?
         } else {
             0
         };
@@ -289,18 +287,18 @@ fn parse_sections<D: Parser + Seeker>(
     let mut sections = Vec::<Section>::with_capacity(section_count as usize);
     for i in 0..section_count {
         let section_offset = base + section_offset as u64 + i as u64 * 8;
-        reader.seek(std::io::SeekFrom::Start(section_offset))?;
-        let offset_flags = reader.deserialize_bu32()?; // ooooooff (o = offset, f = flags)
+        reader.goto(section_offset)?;
+        let offset_flags = reader.bu32()?; // ooooooff (o = offset, f = flags)
         let offset = offset_flags & !0x3_u32;
         let flags = offset_flags & 0x3_u32;
-        let size = reader.deserialize_bu32()?;
+        let size = reader.bu32()?;
 
         let data = if offset > 0 {
             ensure!(
                 size <= 0x2000000,
                 ParseProblem::InvalidRange("section too large", std::panic::Location::current())
             );
-            reader.seek(SeekFrom::Start(base + offset as u64))?;
+            reader.goto(base + offset as u64)?;
             reader.read_as_vec(size as usize)?
         } else {
             Vec::new()
@@ -327,19 +325,17 @@ fn parse_imports<D: Parser + Seeker>(
     let mut import_tables = Vec::<ImportTable>::new();
     let import_table_count = import_size / 8;
     for i in 0..import_table_count {
-        reader.seek(std::io::SeekFrom::Start(
-            base + (import_offset + i * 8) as u64,
-        ))?;
-        let module = reader.deserialize_bu32()?;
-        let offset = reader.deserialize_bu32()?;
+        reader.goto(base + (import_offset + i * 8) as u64)?;
+        let module = reader.bu32()?;
+        let offset = reader.bu32()?;
 
         let mut imports = Vec::new();
-        reader.seek(std::io::SeekFrom::Start(base + offset as u64))?;
+        reader.goto(base + offset as u64)?;
         loop {
-            let offset = reader.deserialize_bu16()?;
-            let kind = reader.deserialize_u8()?;
-            let section = reader.deserialize_u8()?;
-            let addend = reader.deserialize_bu32()?;
+            let offset = reader.bu16()?;
+            let kind = reader.u8()?;
+            let section = reader.u8()?;
+            let addend = reader.bu32()?;
 
             let kind = match kind {
                 0 => ImportKind::None,

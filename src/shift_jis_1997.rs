@@ -18,8 +18,8 @@
 //! two-byte encoding scheme. The first byte (lead-byte) is in the ranges
 //! described above, i.e., `[0x81,0x9F]` or `[0xE0,0xEF]`. The second byte takes
 //! any value in the range `[0x40,0xFC]`, excluding the specific value of
-//! `0x7f`. For a total of `8,789` (`47x187`) characters to be encoded with spaces
-//! for further expansion in the future.
+//! `0x7f`. For a total of `8,789` (`47x187`) characters to be encoded with
+//! spaces for further expansion in the future.
 //!
 //! The character set that [Shift JIS][`ShiftJis1997`] uses is defined by `JIS X
 //! 0208`. `JIS X 0208` is another two-byte encoding specified by JIS containing
@@ -52,9 +52,10 @@
 
 use std::borrow::Borrow;
 use std::marker::PhantomData;
+use std::panic::Location;
 
 use crate::error::DecodingProblem::*;
-use crate::helper::{ensure, ParseStringEncoding};
+use crate::helper::{ensure, ParseStringEncoding, ProblemLocation};
 use crate::jis_x_0201::Decoder as JisX0201Decoder;
 use crate::Result;
 
@@ -103,19 +104,27 @@ where
             match byte {
                 // First byte of a double-byte JIS X 0208 character
                 0x81..=0x9F | 0xE0..=0xFC => {
-                    let next = iter.next().ok_or(UnexpectedEndOfData)?;
+                    let next = iter
+                        .next()
+                        .ok_or_else(|| UnexpectedEndOfData(Location::current()))?;
                     let next = *next.borrow();
                     let (first, last, offset) = internal::SJIS_1997_UTF8_T[byte as usize];
-                    ensure!(next >= first && next <= last, InvalidByte(next));
+                    ensure!(
+                        next >= first && next <= last,
+                        InvalidByte(next, Location::current())
+                    );
                     let relative = (next - first) as usize;
                     let index = offset + relative;
                     let value = internal::SJIS_1997_UTF8_S[index];
-                    ensure!(value != 0, InvalidByte(next));
-                    ensure!((value & 0x8000_0000) == 0, InvalidByte(next));
+                    ensure!(value != 0, InvalidByte(next, Location::current()));
+                    ensure!(
+                        (value & 0x8000_0000) == 0,
+                        InvalidByte(next, Location::current())
+                    );
                     Ok(Next::One(unsafe { char::from_u32_unchecked(value) }))
                 },
                 // Invalid as first byte
-                _ => Err(InvalidByte(byte).into()),
+                _ => Err(InvalidByte(byte, Location::current()).into()),
             }
         } else {
             Ok(Next::EndOfInput)

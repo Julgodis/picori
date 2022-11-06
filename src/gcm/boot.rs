@@ -74,28 +74,28 @@ pub struct Boot {
 impl Boot {
     /// Parse GCM Boot.
     pub fn from_binary<D: Parser>(input: &mut D) -> Result<Self> {
-        let console = input.deserialize_u8()?;
-        let game_code = input.deserialize_u8_array::<2>()?;
-        let country_code = input.deserialize_u8()?;
-        let maker_code = input.deserialize_u8_array::<2>()?;
-        let disc_id = input.deserialize_u8()?;
-        let version = input.deserialize_u8()?;
-        let audio_streaming = input.deserialize_u8()?;
-        let streaming_buffer_size = input.deserialize_u8()?;
-        let _reserved0 = input.deserialize_u8_array::<0x12>()?;
-        let magic = input.deserialize_bu32()?;
-        let game_name = input.deserialize_str::<0x3E0, Ascii>()?;
-        let debug_monitor_offset = input.deserialize_bu32()?;
-        let debug_monitor_address = input.deserialize_bu32()?;
-        let _reserved1 = input.deserialize_u8_array::<0x18>()?;
-        let main_executable_offset = input.deserialize_bu32()?;
-        let fst_offset = input.deserialize_bu32()?;
-        let fst_size = input.deserialize_bu32()?;
-        let fst_max_size = input.deserialize_bu32()?;
-        let user_position = input.deserialize_bu32()?;
-        let user_length = input.deserialize_bu32()?;
-        let unknown0 = input.deserialize_bu32()?;
-        let _reserved2 = input.deserialize_u8_array::<0x4>()?;
+        let console = input.u8()?;
+        let game_code = input.u8_array::<2>()?;
+        let country_code = input.u8()?;
+        let maker_code = input.u8_array::<2>()?;
+        let disc_id = input.u8()?;
+        let version = input.u8()?;
+        let audio_streaming = input.u8()?;
+        let streaming_buffer_size = input.u8()?;
+        let _reserved0 = input.u8_array::<0x12>()?;
+        let magic = input.bu32()?;
+        let game_name = input.str::<0x3E0, Ascii>()?;
+        let debug_monitor_offset = input.bu32()?;
+        let debug_monitor_address = input.bu32()?;
+        let _reserved1 = input.u8_array::<0x18>()?;
+        let main_executable_offset = input.bu32()?;
+        let fst_offset = input.bu32()?;
+        let fst_size = input.bu32()?;
+        let fst_max_size = input.bu32()?;
+        let user_position = input.bu32()?;
+        let user_length = input.bu32()?;
+        let unknown0 = input.bu32()?;
+        let _reserved2 = input.u8_array::<0x4>()?;
 
         ensure!(
             magic == 0xC2339F3D,

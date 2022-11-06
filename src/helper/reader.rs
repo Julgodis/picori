@@ -1,8 +1,7 @@
 use std::io::Read;
 use std::panic::Location;
 
-use super::ParseProblem;
-use crate::Result;
+use crate::{Error, Result};
 
 /// A helper trait for types that can read data into a buffer.
 pub trait Reader {
@@ -71,7 +70,7 @@ where
     ) -> Result<()> {
         match self.read_exact(buffer) {
             Ok(..) => Ok(()),
-            Err(io) => Err(ParseProblem::ReadFailed(buffer.len(), io, caller).into()),
+            Err(io) => Err(Error::ReadFailed(buffer.len(), io, caller)),
         }
     }
 }

@@ -9,10 +9,11 @@
 
 use std::borrow::Borrow;
 use std::marker::PhantomData;
+use std::panic::Location;
 
 use crate::error::DecodingProblem::*;
 use crate::Result;
-use crate::helper::ParseStringEncoding;
+use crate::helper::{ParseStringEncoding, ProblemLocation};
 
 /// [ASCII][`Ascii`] encoding.
 pub struct Ascii {}
@@ -61,7 +62,7 @@ where
             let byte = byte.borrow();
             Some(match Self::decode_byte(*byte) {
                 Some(c) => Ok(c),
-                None => Err(InvalidByte(*byte).into()),
+                None => Err(InvalidByte(*byte, Location::current()).into()),
             })
         } else {
             None
