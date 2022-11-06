@@ -1,3 +1,5 @@
+use std::panic::Location;
+
 use super::endian::{BigEndian, EndianAgnostic, LittleEndian, NativeEndian};
 use super::{DeserializableStringEncoding, Reader};
 use crate::Result;
@@ -5,57 +7,95 @@ use crate::Result;
 /// A helper trait for types that can interpret bytes.
 pub trait Deserializer: Reader {
     /// Read a single u8.
-    fn deserialize_u8(&mut self) -> Result<u8>;
+    #[track_caller]
+    #[inline]
+    fn deserialize_u8(&mut self) -> Result<u8> {
+        let mut buffer = [0u8; 1];
+        self.read_into_tracked(&mut buffer, Location::caller())?;
+        Ok(buffer[0])
+    }
 
     /// Read a single endian agnostic u16.
-    fn deserialize_eu16<E: EndianAgnostic>(&mut self) -> Result<u16>;
+    fn deserialize_eu16<E: EndianAgnostic>(&mut self, caller: &'static Location) -> Result<u16> {
+        let mut buffer = [0u8; 2];
+        self.read_into_tracked(&mut buffer, caller)?;
+        Ok(E::u16_from_bytes(&buffer))
+    }
 
     /// Read a single endian agnostic u32.
-    fn deserialize_eu32<E: EndianAgnostic>(&mut self) -> Result<u32>;
+    fn deserialize_eu32<E: EndianAgnostic>(&mut self, caller: &'static Location) -> Result<u32> {
+        let mut buffer = [0u8; 4];
+        self.read_into_tracked(&mut buffer, caller)?;
+        Ok(E::u32_from_bytes(&buffer))
+    }
 
     /// Read a single u16 in native endian.
+    #[track_caller]
     #[inline]
-    fn deserialize_u16(&mut self) -> Result<u16> { self.deserialize_eu16::<NativeEndian>() }
+    fn deserialize_u16(&mut self) -> Result<u16> {
+        self.deserialize_eu16::<NativeEndian>(Location::caller())
+    }
 
     /// Read a single u32 in native endian.
+    #[track_caller]
     #[inline]
-    fn deserialize_u32(&mut self) -> Result<u32> { self.deserialize_eu32::<NativeEndian>() }
+    fn deserialize_u32(&mut self) -> Result<u32> {
+        self.deserialize_eu32::<NativeEndian>(Location::caller())
+    }
 
     /// Read a single u16 in big endian.
+    #[track_caller]
     #[inline]
-    fn deserialize_bu16(&mut self) -> Result<u16> { self.deserialize_eu16::<BigEndian>() }
+    fn deserialize_bu16(&mut self) -> Result<u16> {
+        self.deserialize_eu16::<BigEndian>(Location::caller())
+    }
 
     /// Read a single u32 in big endian.
+    #[track_caller]
     #[inline]
-    fn deserialize_bu32(&mut self) -> Result<u32> { self.deserialize_eu32::<BigEndian>() }
+    fn deserialize_bu32(&mut self) -> Result<u32> {
+        self.deserialize_eu32::<BigEndian>(Location::caller())
+    }
 
     /// Read a single u16 in little endian.
+    #[track_caller]
     #[inline]
-    fn deserialize_lu16(&mut self) -> Result<u16> { self.deserialize_eu16::<LittleEndian>() }
+    fn deserialize_lu16(&mut self) -> Result<u16> {
+        self.deserialize_eu16::<LittleEndian>(Location::caller())
+    }
 
     /// Read a single u32 in little endian.
+    #[track_caller]
     #[inline]
-    fn deserialize_lu32(&mut self) -> Result<u32> { self.deserialize_eu32::<LittleEndian>() }
+    fn deserialize_lu32(&mut self) -> Result<u32> {
+        self.deserialize_eu32::<LittleEndian>(Location::caller())
+    }
 
     /// Read string with the given encoding until the NUL character is
     /// encountered or `L` bytes have been read.
+    #[track_caller]
     fn deserialize_str<const L: usize, E: DeserializableStringEncoding>(
         &mut self,
     ) -> Result<String> {
-        let buf = self.read_fixed_buffer::<L>()?;
-        let str = E::deserialize_str(buf)?;
-        Ok(str)
+        let mut buffer = [0u8; L];
+        self.read_into_tracked(&mut buffer, Location::caller())?;
+        E::deserialize_str(buffer)
     }
 
     /// Read array of u8 with the given length `L`.
+    #[track_caller]
     #[inline]
     fn deserialize_u8_array<const L: usize>(&mut self) -> Result<[u8; L]> {
-        self.read_fixed_buffer::<L>()
+        self.read_buffer_of_tracked::<u8, L>(Location::caller())
     }
 
     /// Read array of endian agnostic u16 with the given length `L`.
-    fn deserialize_eu16_array<E: EndianAgnostic, const L: usize>(&mut self) -> Result<[u16; L]> {
-        let mut buf = self.read_fixed_buffer_cge::<u16, L>()?;
+    #[inline]
+    fn deserialize_eu16_array<E: EndianAgnostic, const L: usize>(
+        &mut self,
+        caller: &'static Location,
+    ) -> Result<[u16; L]> {
+        let mut buf = self.read_buffer_of_tracked::<u16, L>(caller)?;
         for value in buf.iter_mut().take(L) {
             *value = E::u16_from_native(*value);
         }
@@ -63,20 +103,26 @@ pub trait Deserializer: Reader {
     }
 
     /// Read array of big endian u16 with the given length `L`.
+    #[track_caller]
     #[inline]
     fn deserialize_bu16_array<const L: usize>(&mut self) -> Result<[u16; L]> {
-        self.deserialize_eu16_array::<BigEndian, L>()
+        self.deserialize_eu16_array::<BigEndian, L>(Location::caller())
     }
 
     /// Read array of little endian u16 with the given length `L`.
+    #[track_caller]
     #[inline]
     fn deserialize_lu16_array<const L: usize>(&mut self) -> Result<[u16; L]> {
-        self.deserialize_eu16_array::<LittleEndian, L>()
+        self.deserialize_eu16_array::<LittleEndian, L>(Location::caller())
     }
 
     /// Read array of endian agnostic u32 with the given length `L`.
-    fn deserialize_eu32_array<E: EndianAgnostic, const L: usize>(&mut self) -> Result<[u32; L]> {
-        let mut buf = self.read_fixed_buffer_cge::<u32, L>()?;
+    #[inline]
+    fn deserialize_eu32_array<E: EndianAgnostic, const L: usize>(
+        &mut self,
+        caller: &'static Location,
+    ) -> Result<[u32; L]> {
+        let mut buf = self.read_buffer_of_tracked::<u32, L>(caller)?;
         for value in buf.iter_mut().take(L) {
             *value = E::u32_from_native(*value);
         }
@@ -84,39 +130,22 @@ pub trait Deserializer: Reader {
     }
 
     /// Read array of big endian u32 with the given length `L`.
+    #[track_caller]
     #[inline]
     fn deserialize_bu32_array<const L: usize>(&mut self) -> Result<[u32; L]> {
-        self.deserialize_eu32_array::<BigEndian, L>()
+        self.deserialize_eu32_array::<BigEndian, L>(Location::caller())
     }
 
     /// Read array of little endian u32 with the given length `L`.
+    #[track_caller]
     #[inline]
     fn deserialize_lu32_array<const L: usize>(&mut self) -> Result<[u32; L]> {
-        self.deserialize_eu32_array::<LittleEndian, L>()
+        self.deserialize_eu32_array::<LittleEndian, L>(Location::caller())
     }
 }
 
 /// Implementation of [`Deserializer`] for all [`Reader`].
-impl<Base> Deserializer for Base
-where
-    Base: Reader,
-{
-    #[inline]
-    fn deserialize_u8(&mut self) -> Result<u8> {
-        let buf = self.read_fixed_buffer::<1>()?;
-        Ok(buf[0])
-    }
-
-    fn deserialize_eu16<E: EndianAgnostic>(&mut self) -> Result<u16> {
-        let buf = self.read_fixed_buffer::<2>()?;
-        Ok(E::u16_from_bytes(&buf))
-    }
-
-    fn deserialize_eu32<E: EndianAgnostic>(&mut self) -> Result<u32> {
-        let buf = self.read_fixed_buffer::<4>()?;
-        Ok(E::u32_from_bytes(&buf))
-    }
-}
+impl<Base: Reader> Deserializer for Base {}
 
 // -------------------------------------------------------------------------------
 // Tests

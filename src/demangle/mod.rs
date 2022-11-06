@@ -1,3 +1,0 @@
-//! Demangling C++ symbols.
-//!
-//! Working in progress...

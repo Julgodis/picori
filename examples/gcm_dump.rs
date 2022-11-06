@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use colored::{ColoredString, Colorize};
-use picori::file::gcm;
+use picori::{gcm, Gcm};
 
 extern crate picori;
 
@@ -20,10 +20,10 @@ struct Args {
     #[arg()]
     path:      PathBuf,
     /// Dump boot.bin
-    #[arg(long)]
+    #[arg(short, long)]
     boot:      bool,
     /// Dump bi2.bin
-    #[arg(short = 'd', short, long)]
+    #[arg(short = '2', long)]
     bi2:       bool,
     /// Dump apploader.img
     #[arg(short = 'l', long)]
@@ -50,7 +50,9 @@ fn num(value: u32) -> ColoredString { format!("{}", value).cyan() }
 
 fn output_boot(boot: &gcm::Boot) {
     println!("boot.bin:");
-    println!("  console id: {}", hex2(boot.console_id));
+    println!("  console: {}", match boot.console {
+        gcm::ConsoleType::GameCube => "GameCube",
+    });
     println!(
         "  game code: {} {}",
         hex2(boot.game_code[0]),
@@ -69,7 +71,6 @@ fn output_boot(boot: &gcm::Boot) {
         "  streaming buffer size: {}",
         hex2(boot.streaming_buffer_size)
     );
-    println!("  magic: {}", hex8(boot.magic));
     println!(
         "  debug_monitor_offset: {}",
         hex8(boot.debug_monitor_offset)
@@ -131,8 +132,8 @@ fn output_fst(fst: &gcm::Fst) {
     for (path, entry) in fst.files() {
         let indent = path.ancestors().count() - 1;
         match entry {
-            gcm::FstEntry::Root => {},
-            gcm::FstEntry::File {
+            gcm::fst::Entry::Root => {},
+            gcm::fst::Entry::File {
                 name, offset, size, ..
             } => {
                 println!(
@@ -144,7 +145,7 @@ fn output_fst(fst: &gcm::Fst) {
                     indent = indent * 2
                 );
             },
-            gcm::FstEntry::Directory { name, .. } => {
+            gcm::fst::Entry::Directory { name, .. } => {
                 println!("{:indent$}{}", "", name.red(), indent = indent * 2);
             },
         }
@@ -179,7 +180,7 @@ fn main() {
 
     let file = std::fs::File::open(args.path).unwrap();
     let mut file = std::io::BufReader::new(file);
-    let gcm = gcm::parse(&mut file).unwrap();
+    let gcm = Gcm::from_binary(&mut file).unwrap();
 
     if dump_boot {
         output_boot(&gcm.boot());

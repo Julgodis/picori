@@ -1,7 +1,7 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-use picori::string::shift_jis::v1997::IteratorExt as Ie1;
-use picori::string::shift_jis::v2004::IteratorExt as Ie2;
+use picori::ShiftJis1997IteratorExt;
+use picori::ShiftJis2004IteratorExt;
 extern crate picori;
 
 fuzz_target!(|data: &[u8]| {

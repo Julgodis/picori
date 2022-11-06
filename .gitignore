@@ -2,3 +2,7 @@
 .vscode
 
 Cargo.lock
+
+coverage.sh
+
+*.hexpat

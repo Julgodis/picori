@@ -1,6 +1,6 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-use picori::string::ascii::AsciiIterator;
+use picori::AsciiIteratorExt;
 extern crate picori;
 
 fuzz_target!(|data: &[u8]| {

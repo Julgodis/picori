@@ -17,7 +17,7 @@
 [![coverage](/../coverage/coverage/badges/flat.svg)](https://julgodis.github.io/picori/coverage/)
 [![license](https://img.shields.io/crates/l/picori)](https://github.com/Julgodis/picori/LICENSE)
 
-Picori is a library to support modding and decompilation tools for GameCube and Wii games. It includes support to serialize and deserialize many development and game formats, common compression algorithms, string encodings, and the ability to demangle C++ symbols.
+Picori is a library for decompilation, modding, and rom-hacking with focus on GameCube and Wii games. It support parsing and building common file formats, e.g., Dolphin executables (DOLs). 
 
 [Features](#features) •
 [Usage](#usage) •
@@ -25,7 +25,8 @@ Picori is a library to support modding and decompilation tools for GameCube and 
 [Installation](#installation)
 
 ```diff
-!!! The project is currently very early stages of development. Features may be unimplemented and compatibility between versions before 1.0.0 is not guaranteed. !!!
+!!! The project is currently very early stages of development. !!!
+!!! All features are not unimplemented and compatibility is not guaranteed. !!!
 ```
 
 </div>

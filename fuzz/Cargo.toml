@@ -35,3 +35,9 @@ name = "ascii"
 path = "fuzz_targets/ascii.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "rel"
+path = "fuzz_targets/rel.rs"
+test = false
+doc = false

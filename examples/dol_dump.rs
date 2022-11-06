@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
+use picori::Dol;
 
 extern crate picori;
 
@@ -54,7 +55,7 @@ fn main() {
 
     let file = std::fs::File::open(args.path).unwrap();
     let mut file = std::io::BufReader::new(file);
-    let dol = picori::file::dol::parse(&mut file).unwrap();
+    let dol = Dol::from_binary(&mut file).unwrap();
 
     if dump_header {
         println!("header:");

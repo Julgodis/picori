@@ -3,8 +3,8 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use colored::{ColoredString, Colorize};
-use picori::file::rel::{ImportKind, Rel, RelReader, RelocationKind};
-use picori::{Deserializer, Seeker};
+use picori::rel::ImportKind;
+use picori::Rel;
 
 extern crate picori;
 
@@ -48,7 +48,7 @@ fn hex4(value: u16) -> ColoredString { format!("{:#06x}", value).cyan() }
 fn hex8(value: u32) -> ColoredString { format!("{:#010x}", value).cyan() }
 fn num(value: u32) -> ColoredString { format!("{}", value).cyan() }
 
-fn output_header<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
+fn output_header(rel: &Rel) {
     println!("header:");
     println!("  module: {}", num(rel.module));
     println!("  version: {}", num(rel.version));
@@ -99,7 +99,7 @@ fn output_header<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
     );
 }
 
-fn output_sections<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
+fn output_sections(rel: &Rel) {
     println!("sections:");
     for (i, section) in rel.sections.iter().enumerate() {
         println!(
@@ -131,7 +131,26 @@ fn output_sections<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
     }
 }
 
-fn output_imports<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
+fn import_kind_to_string(kind: ImportKind) -> &'static str {
+    match kind {
+        ImportKind::None => "None",
+        ImportKind::Addr32 => "Addr32",
+        ImportKind::Addr24 => "Addr24",
+        ImportKind::Addr16 => "Addr16",
+        ImportKind::Addr16Lo => "Addr16Lo",
+        ImportKind::Addr16Hi => "Addr16Hi",
+        ImportKind::Addr16Ha => "Addr16Ha",
+        ImportKind::Addr14 => "Addr14",
+        ImportKind::Rel24 => "Rel24",
+        ImportKind::Rel14 => "Rel14",
+        ImportKind::DolphinNop => "DolphinNop",
+        ImportKind::DolphinSection => "DolphinSection",
+        ImportKind::DolphinEnd => "DolphinEnd",
+        ImportKind::DolphinMRKREF => "DolphinMRKREF",
+    }
+}
+
+fn output_imports(rel: &Rel) {
     println!("import tables:");
     for (i, table) in rel.import_tables.iter().enumerate() {
         println!(
@@ -146,28 +165,10 @@ fn output_imports<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
     for table in rel.import_tables.iter() {
         println!("  [ module: {:>4} ]", num(table.module));
         for (j, import) in table.imports.iter().enumerate() {
-            let kind = match import.kind {
-                ImportKind::None => "None",
-                ImportKind::Addr32 => "Addr32",
-                ImportKind::Addr24 => "Addr24",
-                ImportKind::Addr16 => "Addr16",
-                ImportKind::Addr16Lo => "Addr16Lo",
-                ImportKind::Addr16Hi => "Addr16Hi",
-                ImportKind::Addr16Ha => "Addr16Ha",
-                ImportKind::Addr14 => "Addr14",
-                ImportKind::Rel24 => "Rel24",
-                ImportKind::Rel14 => "Rel14",
-                ImportKind::DolphinNop => "DolphinNop",
-                ImportKind::DolphinSection => "DolphinSection",
-                ImportKind::DolphinEnd => "DolphinEnd",
-                ImportKind::DolphinMRKREF => "DolphinMRKREF",
-                _ => "Unknown",
-            };
-
             println!(
                 "  #{:<4} {:<20} section: {:>2}, offset: {}, addend: {}",
                 num(j as u32),
-                kind,
+                import_kind_to_string(import.kind),
                 num(import.section as u32),
                 hex4(import.offset),
                 hex8(import.addend)
@@ -176,27 +177,15 @@ fn output_imports<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
     }
 }
 
-fn output_relocations<D: Deserializer + Seeker>(rel: &mut RelReader<D>) {
+fn output_relocations(rel: &Rel) {
     println!("relocation:");
 
     for (i, relocation) in rel.relocations().enumerate() {
-        let kind = match relocation.kind {
-            RelocationKind::Addr32 => "Addr32",
-            RelocationKind::Addr24 => "Addr24",
-            RelocationKind::Addr16 => "Addr16",
-            RelocationKind::Addr16Lo => "Addr16Lo",
-            RelocationKind::Addr16Hi => "Addr16Hi",
-            RelocationKind::Addr16Ha => "Addr16Ha",
-            RelocationKind::Addr14 => "Addr14",
-            RelocationKind::Rel24 => "Rel24",
-            RelocationKind::Rel14 => "Rel14",
-        };
-
         println!(
             "  #{:<4} {:<20} target: [section: {:>2}, offset: {}], reference: [module: {:>4}, \
              section: {:>2}, offset: {}]",
             num(i as u32),
-            kind,
+            import_kind_to_string(relocation.kind),
             num(relocation.target.section),
             hex8(relocation.target.offset),
             num(relocation.module),
@@ -216,17 +205,16 @@ fn output_data(data: &Vec<u8>, width: usize) {
     }
 }
 
-fn output_sections_data<D: Deserializer + Seeker>(rel: &mut RelReader<D>, width: usize) {
+fn output_sections_data(rel: &Rel, width: usize) {
     println!("sections:");
-    for i in 0..rel.sections.len() {
-        let section = rel.section_at(i).unwrap();
+    for (i, section) in rel.sections.iter().enumerate() {
         println!("  [ section: {:>2} ]", num(i as u32));
-        output_data(&section.1, width);
+        output_data(&section.data, width);
     }
 }
 
-fn output<D: Deserializer + Seeker>(
-    rel: &mut RelReader<D>,
+fn output(
+    rel: &Rel,
     dump_header: bool,
     dump_sections: bool,
     dump_imports: bool,
@@ -284,30 +272,22 @@ fn main() {
     let file = std::fs::File::open(args.path).unwrap();
     let mut file = std::io::BufReader::new(file);
 
-    if picori::compression::yaz0::is_yaz0(&mut file) {
-        let mut reader = picori::compression::Yaz0Reader::new(file).unwrap();
+    let rel = if picori::yaz0::is_yaz0(&mut file) {
+        let mut reader = picori::Yaz0Reader::new(file).unwrap();
         let decompressed = reader.decompress().unwrap();
         let mut cursor = Cursor::new(decompressed);
-        let mut rel = picori::file::rel::RelReader::new(cursor).unwrap();
-        output(
-            &mut rel,
-            dump_header,
-            dump_sections,
-            dump_imports,
-            dump_relocations,
-            dump_data,
-            width,
-        );
+        Rel::from_binary(&mut cursor).unwrap()
     } else {
-        let mut rel = picori::file::rel::RelReader::new(file).unwrap();
-        output(
-            &mut rel,
-            dump_header,
-            dump_sections,
-            dump_imports,
-            dump_relocations,
-            dump_data,
-            width,
-        );
+        Rel::from_binary(file).unwrap()
     };
+
+    output(
+        &rel,
+        dump_header,
+        dump_sections,
+        dump_imports,
+        dump_relocations,
+        dump_data,
+        width,
+    );
 }

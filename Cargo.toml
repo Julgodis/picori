@@ -7,7 +7,7 @@ authors = ["Julgodis <self@julgodis.xyz>"]
 repository = "https://github.com/Julgodis/picori"
 license = "MIT"
 readme = "README.md"
-description = "Library building modding and decomplication tools for GameCube/Wii games"
+description = "Picori is a library for decompilation, modding, and rom-hacking with focus on GameCube and Wii games."
 keywords = ["dol", "rel", "rarc", "yaz0", "gamecube"]
 categories = ["encoding", "compression", "parser-implementations"]
 
@@ -16,29 +16,19 @@ publish = false
 
 [features]
 # by default, picori will be built with all features enabled
-default = ["file", "compression", "encoding", "demangle", "ciso", "dol", "gcm", "rel", "yaz0", "ascii", "jis_x_0201", "shift_jis_1997", "shift_jis_2004"]
+default = ["ciso", "dol", "gcm", "rel", "yaz0", "ascii", "jis_x_0201", "shift_jis_1997", "shift_jis_2004", "source_location"]
 
-# file formats
-file = []
-ciso = ["file"]
-gcm = ["file", "ascii", "dol"]
-dol = ["file"]
-rel = ["file"]
+ciso = []
+gcm = ["ascii", "dol"]
+dol = []
+rel = []
+yaz0 = []
+ascii = []
+jis_x_0201 = []
+shift_jis_1997 = ["jis_x_0201"]
+shift_jis_2004 = ["jis_x_0201"]
 
-# compression
-compression = []
-yaz0 = ["compression"]
-
-# demangling
-# TODO: add demangling features
-demangle = []
-
-# encoding
-encoding = []
-ascii = ["encoding"]
-jis_x_0201 = ["encoding"]
-shift_jis_1997 = ["encoding", "jis_x_0201"]
-shift_jis_2004 = ["encoding", "jis_x_0201"]
+source_location = []
 
 [dependencies]
 thiserror = "1.0"
