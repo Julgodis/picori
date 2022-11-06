@@ -18,44 +18,35 @@ extern crate picori;
 struct Args {
     /// Path to the file to dump
     #[arg()]
-    path: PathBuf,
+    path:      PathBuf,
     /// Dump boot.bin
     #[arg(long)]
-    boot: bool,
+    boot:      bool,
     /// Dump bi2.bin
     #[arg(short = 'd', short, long)]
-    bi2: bool,
+    bi2:       bool,
     /// Dump apploader.img
     #[arg(short = 'l', long)]
     apploader: bool,
-    /// Dump main.dol
-    #[arg(short = 'e', long)]
-    dol: bool,
     /// Dump fst.bin
     #[arg(short, long)]
-    fst: bool,
+    fst:       bool,
     /// Dump data
     #[arg(short, long)]
-    data: bool,
+    data:      bool,
     /// Dump all
     #[arg(short, long)]
-    all: bool,
+    all:       bool,
     /// Column width
     #[arg(short, long, default_value = "32")]
-    width: usize,
+    width:     usize,
 }
 
-fn hex2(value: u8) -> ColoredString {
-    format!("{:#04x}", value).cyan()
-}
+fn hex2(value: u8) -> ColoredString { format!("{:#04x}", value).cyan() }
 
-fn hex8(value: u32) -> ColoredString {
-    format!("{:#010x}", value).cyan()
-}
+fn hex8(value: u32) -> ColoredString { format!("{:#010x}", value).cyan() }
 
-fn num(value: u32) -> ColoredString {
-    format!("{}", value).cyan()
-}
+fn num(value: u32) -> ColoredString { format!("{}", value).cyan() }
 
 fn output_boot(boot: &gcm::Boot) {
     println!("boot.bin:");
@@ -134,13 +125,38 @@ fn output_apploader(apploader: &gcm::Apploader, data: bool, width: usize) {
     }
 }
 
+fn output_fst(fst: &gcm::Fst) {
+    println!("fst.bin:");
+
+    for (path, entry) in fst.files() {
+        let indent = path.ancestors().count() - 1;
+        match entry {
+            gcm::FstEntry::Root => {},
+            gcm::FstEntry::File {
+                name, offset, size, ..
+            } => {
+                println!(
+                    "{:indent$}{} offset: {} size: {}",
+                    "",
+                    name.green(),
+                    hex8(offset),
+                    hex8(size),
+                    indent = indent * 2
+                );
+            },
+            gcm::FstEntry::Directory { name, .. } => {
+                println!("{:indent$}{}", "", name.red(), indent = indent * 2);
+            },
+        }
+    }
+}
+
 fn main() {
     let args = Args::parse();
 
     let mut dump_boot = args.boot;
     let mut dump_bi2 = args.bi2;
     let mut dump_apploader = args.apploader;
-    let mut dump_dol = args.dol;
     let mut dump_fst = args.fst;
 
     let data = args.data;
@@ -153,11 +169,10 @@ fn main() {
         dump_boot = true;
         dump_bi2 = true;
         dump_apploader = true;
-        dump_dol = true;
         dump_fst = true;
     }
 
-    if !dump_boot && !dump_bi2 && !dump_apploader && !dump_dol && !dump_fst {
+    if !dump_boot && !dump_bi2 && !dump_apploader && !dump_fst {
         println!("nothing to dump :(");
         return;
     }
@@ -176,5 +191,9 @@ fn main() {
 
     if dump_apploader {
         output_apploader(&gcm.apploader(), data, width);
+    }
+
+    if dump_fst {
+        output_fst(&gcm.fst());
     }
 }

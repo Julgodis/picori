@@ -72,6 +72,22 @@ mod tests {
     }
 
     #[test]
+    fn missing_block_data() {
+        let mut ciso = Vec::<u8>::new();
+        ciso.extend_from_slice(&[0x4F, 0x53, 0x49, 0x43]);
+        ciso.extend_from_slice(&[0x00, 0x00, 0x00, 0x04]);
+        ciso.extend_from_slice(&[0_u8; 0x7FF8]);
+
+        ciso[8 + 1] = 1;
+        ciso.extend_from_slice(&[1]);
+
+        let mut reader = Cursor::new(ciso);
+        let mut decoder = Reader::new(&mut reader).unwrap();
+        let result = decoder.decompress(&mut Cursor::new([0; 4]));
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn decode_return_error() {
         let mut ciso = Vec::<u8>::new();
         ciso.extend_from_slice(&[0x4F, 0x53, 0x49, 0x43]);

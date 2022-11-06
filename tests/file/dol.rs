@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use std::fs::File;
     use std::io::Cursor;
 
     use picori::file::dol::{parse, section_name, SectionKind};
@@ -51,11 +52,8 @@ mod tests {
         dol.extend_from_slice(&0x39876543_u32.to_be_bytes());
 
         dol.extend_from_slice(&[
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ]);
-
-        println!("dol {} bytes", dol.len());
 
         let dol = parse(&mut Cursor::new(dol)).unwrap();
         assert_eq!(dol.header.text_offset, text_offset);
@@ -92,4 +90,58 @@ mod tests {
     #[test]
     #[should_panic]
     fn section_name_bss_unreachable() { section_name(SectionKind::Bss, 3); }
+
+    #[test]
+    fn read_zeroed_sections0() {
+        let mut file = include_bytes!("../../assets/tests/dol/test0.dol");
+        let mut cursor = Cursor::new(&mut file);
+        let dol = parse(&mut cursor).unwrap();
+
+        let init = dol.section_by_name(".init").unwrap();
+        assert_eq!(init.name, ".init");
+        assert_eq!(init.kind, SectionKind::Text);
+        assert_eq!(init.address, 0x8000_3100);
+        assert_eq!(init.size, 0x2500);
+        assert_eq!(init.aligned_size, 0x2500);
+        assert_eq!(init.data, vec![0_u8; 0x2500]);
+
+        let text = dol.section_by_name(".text").unwrap();
+        assert_eq!(text.name, ".text");
+        assert_eq!(text.kind, SectionKind::Text);
+        assert_eq!(text.address, 0x8000_56C0);
+        assert_eq!(text.size, 0x36_E100);
+        assert_eq!(text.aligned_size, 0x36_E100);
+        assert_eq!(text.data, vec![0_u8; 0x36_E100]);
+    }
+
+    #[test]
+    fn read_zeroed_sections1() {
+        let mut file = include_bytes!("../../assets/tests/dol/test1.dol");
+        let mut cursor = Cursor::new(&mut file);
+        let dol = parse(&mut cursor).unwrap();
+        assert!(dol.rom_copy_info.is_some());
+        assert!(dol.bss_init_info.is_some());
+
+        let init = dol.section_by_name(".init").unwrap();
+        assert_eq!(init.name, ".init");
+        assert_eq!(init.kind, SectionKind::Text);
+        assert_eq!(init.address, 0x8000_3100);
+        assert_eq!(init.size, 0x24E8);
+        assert_eq!(init.aligned_size, 0x2500);
+
+        let text = dol.section_by_name(".text").unwrap();
+        assert_eq!(text.name, ".text");
+        assert_eq!(text.kind, SectionKind::Text);
+        assert_eq!(text.address, 0x8000_56C0);
+        assert_eq!(text.size, 0x36_E0F4);
+        assert_eq!(text.aligned_size, 0x36_E100);
+        assert_eq!(text.data, vec![0_u8; 0x36_E100]);
+
+        let init2 = dol.section_by_address(init.address).unwrap();
+        assert_eq!(init2.name, ".init");
+        assert_eq!(init2.kind, SectionKind::Text);
+        assert_eq!(init2.address, 0x8000_3100);
+        assert_eq!(init2.size, 0x24E8);
+        assert_eq!(init2.aligned_size, 0x2500);
+    }
 }

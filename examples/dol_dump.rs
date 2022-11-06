@@ -61,19 +61,13 @@ fn main() {
         for i in 0..7 {
             println!(
                 "  [{:>2}] text  offset: 0x{:08x}, address: 0x{:08x}, size: 0x{:08x}",
-                i,
-                dol.header.text_offset[i],
-                dol.header.text_address[i],
-                dol.header.text_size[i]
+                i, dol.header.text_offset[i], dol.header.text_address[i], dol.header.text_size[i]
             );
         }
         for i in 0..11 {
             println!(
                 "  [{:>2}] data  offset: 0x{:08x}, address: 0x{:08x}, size: 0x{:08x}",
-                i,
-                dol.header.data_offset[i],
-                dol.header.data_address[i],
-                dol.header.data_size[i]
+                i, dol.header.data_offset[i], dol.header.data_address[i], dol.header.data_size[i]
             );
         }
         println!(

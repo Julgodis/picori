@@ -2,8 +2,7 @@
 mod tests {
     use picori::encoding::{ShiftJis2004, ShiftJis2004IteratorExt};
 
-    static TEST_UTF8: &[u8] =
-        include_bytes!("../../assets/tests/shift-jis/2004.ok.utf-8.txt");
+    static TEST_UTF8: &[u8] = include_bytes!("../../assets/tests/shift-jis/2004.ok.utf-8.txt");
     static TEST_SHIFTJIS: &[u8] =
         include_bytes!("../../assets/tests/shift-jis/2004.ok.shift-jis.txt");
     static TEST_ERROR_2BYTE_SHIFTJIS: &[u8] =
