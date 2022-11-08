@@ -41,7 +41,7 @@ use crate::helper::{ParseProblem, Parser, ProblemLocation, Seeker};
 use crate::Result;
 
 /// [CISO][`crate::ciso`] magic number representing the four characters "CISO".
-static MAGIC: u32 = 0x4F534943;
+static MAGIC: u32 = 0x4349534F;
 
 #[derive(Debug)]
 struct Header {

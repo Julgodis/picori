@@ -8,7 +8,7 @@ mod ciso {
     fn reader() {
         // example ciso
         let mut ciso = Vec::<u8>::new();
-        ciso.extend_from_slice(&[0x4F, 0x53, 0x49, 0x43]);
+        ciso.extend_from_slice(&[0x43, 0x49, 0x53, 0x4F]);
         ciso.extend_from_slice(&[0x00, 0x00, 0x00, 0x04]);
         ciso.extend_from_slice(&[0_u8; 0x7FF8]);
 
@@ -50,13 +50,13 @@ mod ciso {
     #[test]
     fn invalid_block_size() {
         let mut ciso = Vec::<u8>::new();
-        ciso.extend_from_slice(&[0x4F, 0x53, 0x49, 0x43]);
+        ciso.extend_from_slice(&[0x43, 0x49, 0x53, 0x4F]);
         ciso.extend_from_slice(&[0, 0, 0, 0]);
         ciso.extend_from_slice(&[1_u8; 0x7FF8]);
         assert!(CisoReader::new(&mut Cursor::new(ciso)).is_err());
 
         let mut ciso = Vec::<u8>::new();
-        ciso.extend_from_slice(&[0x4F, 0x53, 0x49, 0x43]);
+        ciso.extend_from_slice(&[0x43, 0x49, 0x53, 0x4F]);
         ciso.extend_from_slice(&[0xFF, 0xFF, 0xFF, 0xFF]);
         ciso.extend_from_slice(&[1_u8; 0x7FF8]);
         assert!(CisoReader::new(&mut Cursor::new(ciso)).is_err());
@@ -65,7 +65,7 @@ mod ciso {
     #[test]
     fn invalid_blocks() {
         let mut ciso = Vec::<u8>::new();
-        ciso.extend_from_slice(&[0x4F, 0x53, 0x49, 0x43]);
+        ciso.extend_from_slice(&[0x43, 0x49, 0x53, 0x4F]);
         ciso.extend_from_slice(&[0x00, 0x00, 0x00, 0x04]);
         ciso.extend_from_slice(&[0_u8; 0x7FF8]);
         assert!(CisoReader::new(&mut Cursor::new(ciso)).is_err());
@@ -74,7 +74,7 @@ mod ciso {
     #[test]
     fn missing_block_data() {
         let mut ciso = Vec::<u8>::new();
-        ciso.extend_from_slice(&[0x4F, 0x53, 0x49, 0x43]);
+        ciso.extend_from_slice(&[0x43, 0x49, 0x53, 0x4F]);
         ciso.extend_from_slice(&[0x00, 0x00, 0x00, 0x04]);
         ciso.extend_from_slice(&[0_u8; 0x7FF8]);
 
@@ -90,7 +90,7 @@ mod ciso {
     #[test]
     fn decode_return_error() {
         let mut ciso = Vec::<u8>::new();
-        ciso.extend_from_slice(&[0x4F, 0x53, 0x49, 0x43]);
+        ciso.extend_from_slice(&[0x43, 0x49, 0x53, 0x4F]);
         ciso.extend_from_slice(&[0x00, 0x00, 0x00, 0x04]);
         ciso.extend_from_slice(&[0_u8; 0x7FF8]);
 
