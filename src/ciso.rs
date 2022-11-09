@@ -8,10 +8,11 @@
 //! # Parse
 //!
 //! Because decompressed [CISO][`crate::ciso`] files can be rather large,
-//! [`CisoReader`] is used to parse the file incrementally. The [`CisoReader`] will parse
-//! the file header to determine how many blocks that are used. What you do with
-//! the blocks is up to you, they can be access via [`CisoReader::blocks`]. To
-//! decompress the whole file at once, use [`CisoReader::decompress`].
+//! [`CisoReader`] is used to parse the file incrementally. The [`CisoReader`]
+//! will parse the file header to determine how many blocks that are used. What
+//! you do with the blocks is up to you, they can be access via
+//! [`CisoReader::blocks`]. To decompress the whole file at once, use
+//! [`CisoReader::decompress`].
 //!
 //! ## Example
 //!
@@ -52,7 +53,7 @@ struct Header {
 impl Header {
     pub fn from_binary<D: Parser + Seeker>(input: &mut D) -> Result<Self> {
         let magic = input.bu32()?;
-        let block_size = input.bu32()? as usize;
+        let block_size = input.u32()? as usize;
         if magic != MAGIC {
             return Err(
                 ParseProblem::InvalidMagic("expected: 0x4F534943", Location::current()).into(),
@@ -66,32 +67,31 @@ impl Header {
         }
 
         let block_map = input.u8_array::<{ 0x8000 - 8 }>()?;
-        let block_total = block_map
+        let Some(last_block_index) = block_map
             .iter()
             .enumerate()
-            .filter_map(|(i, &x)| if x != 0 { Some(i + 1) } else { None })
-            .max();
+            .filter(|(_, &b)| b != 0)
+            .map(|x| x.0)
+            .max()
+        else {
+            return Err(ParseProblem::InvalidData(
+                "no blocks in block map",
+                Location::current(),
+            )
+            .into());
+        };
 
-        if let Some(block_total) = block_total {
-            let mut blocks = block_map
-                .iter()
-                .take(block_total)
-                .enumerate()
-                .map(|x| (0_u64, *x.1 == 1))
-                .collect::<Vec<_>>();
-
-            let mut offset = 0_u64;
-            for block in blocks.iter_mut() {
-                if block.1 {
-                    block.0 = offset;
-                    offset += block_size as u64;
-                }
-            }
-
-            Ok(Header { block_size, blocks })
-        } else {
-            Err(ParseProblem::InvalidHeader("invalid block map", Location::current()).into())
+        let mut blocks = Vec::with_capacity(last_block_index + 1);
+        let mut block_offset = 0_u64;
+        for i in 0..=last_block_index {
+            blocks.push((block_offset, block_map[i] != 0));
+            block_offset += if block_map[i] != 0 {
+                block_size as u64
+            } else {
+                0
+            };
         }
+        Ok(Header { block_size, blocks })
     }
 }
 

@@ -203,11 +203,7 @@ impl Rel {
         };
 
         // version 3
-        let fix_size = if version >= 3 {
-            reader.bu32()?
-        } else {
-            0
-        };
+        let fix_size = if version >= 3 { reader.bu32()? } else { 0 };
 
         ensure!(
             version <= 3,

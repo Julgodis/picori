@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod boot {
-    use picori::gcm::{Boot, self};
+    use picori::gcm::{self, Boot};
 
     #[test]
     fn ok() {
@@ -99,6 +99,9 @@ mod boot {
         assert_eq!(result.version, 0x00);
         assert_eq!(result.audio_streaming, 0x00);
         assert_eq!(result.streaming_buffer_size, 0x00);
-        assert_eq!(result.game_name, "THE LEGEND OF ZELDA The Wind Waker for USA");
+        assert_eq!(
+            result.game_name,
+            "THE LEGEND OF ZELDA The Wind Waker for USA"
+        );
     }
 }

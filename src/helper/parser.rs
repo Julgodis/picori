@@ -33,44 +33,32 @@ pub trait Parser: Reader {
     /// Read a single u16 in native endian.
     #[track_caller]
     #[inline]
-    fn u16(&mut self) -> Result<u16> {
-        self.eu16::<NativeEndian>(Location::caller())
-    }
+    fn u16(&mut self) -> Result<u16> { self.eu16::<NativeEndian>(Location::caller()) }
 
     /// Read a single u32 in native endian.
     #[track_caller]
     #[inline]
-    fn u32(&mut self) -> Result<u32> {
-        self.eu32::<NativeEndian>(Location::caller())
-    }
+    fn u32(&mut self) -> Result<u32> { self.eu32::<NativeEndian>(Location::caller()) }
 
     /// Read a single u16 in big endian.
     #[track_caller]
     #[inline]
-    fn bu16(&mut self) -> Result<u16> {
-        self.eu16::<BigEndian>(Location::caller())
-    }
+    fn bu16(&mut self) -> Result<u16> { self.eu16::<BigEndian>(Location::caller()) }
 
     /// Read a single u32 in big endian.
     #[track_caller]
     #[inline]
-    fn bu32(&mut self) -> Result<u32> {
-        self.eu32::<BigEndian>(Location::caller())
-    }
+    fn bu32(&mut self) -> Result<u32> { self.eu32::<BigEndian>(Location::caller()) }
 
     /// Read a single u16 in little endian.
     #[track_caller]
     #[inline]
-    fn lu16(&mut self) -> Result<u16> {
-        self.eu16::<LittleEndian>(Location::caller())
-    }
+    fn lu16(&mut self) -> Result<u16> { self.eu16::<LittleEndian>(Location::caller()) }
 
     /// Read a single u32 in little endian.
     #[track_caller]
     #[inline]
-    fn lu32(&mut self) -> Result<u32> {
-        self.eu32::<LittleEndian>(Location::caller())
-    }
+    fn lu32(&mut self) -> Result<u32> { self.eu32::<LittleEndian>(Location::caller()) }
 
     /// Read string with the given encoding until the NUL character is
     /// encountered or `L` bytes have been read.
@@ -187,20 +175,14 @@ mod tests {
     #[test]
     fn u8_array() {
         let mut data: &[u8] = &[0x01, 0x02, 0x03, 0x04];
-        assert_eq!(data.u8_array::<4>().unwrap(), [
-            0x01, 0x02, 0x03, 0x04
-        ]);
+        assert_eq!(data.u8_array::<4>().unwrap(), [0x01, 0x02, 0x03, 0x04]);
     }
 
     #[test]
     fn u16_array() {
         let mut data: &[u8] = &[0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04];
-        assert_eq!(data.bu16_array::<2>().unwrap(), [
-            0x0102, 0x0304,
-        ]);
-        assert_eq!(data.lu16_array::<2>().unwrap(), [
-            0x0201, 0x0403,
-        ]);
+        assert_eq!(data.bu16_array::<2>().unwrap(), [0x0102, 0x0304,]);
+        assert_eq!(data.lu16_array::<2>().unwrap(), [0x0201, 0x0403,]);
     }
 
     #[test]
@@ -209,11 +191,7 @@ mod tests {
             0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
             0x07, 0x08,
         ];
-        assert_eq!(data.bu32_array::<2>().unwrap(), [
-            0x01020304, 0x05060708
-        ]);
-        assert_eq!(data.lu32_array::<2>().unwrap(), [
-            0x04030201, 0x08070605
-        ]);
+        assert_eq!(data.bu32_array::<2>().unwrap(), [0x01020304, 0x05060708]);
+        assert_eq!(data.lu32_array::<2>().unwrap(), [0x04030201, 0x08070605]);
     }
 }

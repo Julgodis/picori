@@ -1,17 +1,17 @@
 //! [ASCII][`Ascii`] encoding.
-//! 
+//!
 //! [ASCII][`Ascii`] is a 7-bit encoding designed for information interchange in
 //! English. Bytes with the eighth bit set are considered invalid and will cause
-//! an [`InvalidByte`][`crate::error::DecodingProblem::InvalidByte`] to be returned.
-//! 
+//! an [`InvalidByte`][`crate::error::DecodingProblem::InvalidByte`] to be
+//! returned.
 
 use std::borrow::Borrow;
 use std::marker::PhantomData;
 use std::panic::Location;
 
 use crate::error::DecodingProblem::*;
-use crate::Result;
 use crate::helper::{ParseStringEncoding, ProblemLocation};
+use crate::Result;
 
 /// [ASCII][`Ascii`] encoding.
 pub struct Ascii {}

@@ -5,7 +5,7 @@
 //! Compression is not yet supported.
 //!
 //! ## Decompression
-//! 
+//!
 //! Decompress a Yaz0 compressed file:
 //!
 //! ```no_run
@@ -131,7 +131,8 @@ impl<D: Parser + Seeker> Yaz0Reader<D> {
     }
 }
 
-/// Check if the given data is compressed with Yaz0 by looking for the Yaz0 magic.
+/// Check if the given data is compressed with Yaz0 by looking for the Yaz0
+/// magic.
 pub fn is_yaz0<D: Parser + Seeker>(input: &mut D) -> bool {
     let mut check = || -> Result<bool> {
         let base = input.position()?;

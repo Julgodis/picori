@@ -3,8 +3,7 @@ mod shift_jis_1997 {
     use picori::{ShiftJis1997, ShiftJis1997IteratorExt};
 
     static TEST_UTF8: &[u8] = include_bytes!("../assets/tests/shift-jis/1997.ok.utf-8.txt");
-    static TEST_SHIFTJIS: &[u8] =
-        include_bytes!("../assets/tests/shift-jis/1997.ok.shift-jis.txt");
+    static TEST_SHIFTJIS: &[u8] = include_bytes!("../assets/tests/shift-jis/1997.ok.shift-jis.txt");
     static TEST_ERROR_2BYTE_SHIFTJIS: &[u8] =
         include_bytes!("../assets/tests/shift-jis/1997.error.two-byte.shift-jis.txt");
 

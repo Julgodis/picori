@@ -1,7 +1,7 @@
 //! Parse GameCube master disc ([GCM][`crate::gcm`]) files.
 //!
-//! [GCM][`crate::gcm`] is a direct 1-to-1 copy of the a GameCube disc. It contains the
-//! executable code, the data files, and the file system table.
+//! [GCM][`crate::gcm`] is a direct 1-to-1 copy of the a GameCube disc. It
+//! contains the executable code, the data files, and the file system table.
 //!
 //! # Parse
 //!
@@ -43,8 +43,8 @@ pub use fst::Fst;
 use crate::helper::{ensure, ParseProblem, Parser, ProblemLocation, Seeker};
 use crate::Result;
 
-/// `.gcm` file object. 
-/// 
+/// `.gcm` file object.
+///
 /// Because `.gcm` files take up a lot of space, the [`Gcm`]
 /// only contains information about the boot, bi2, apploader, executable, and
 /// file string table. File specific data is not included. To get the data for a
