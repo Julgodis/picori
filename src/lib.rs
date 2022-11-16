@@ -58,6 +58,7 @@ pub mod ciso;
 pub mod dol;
 pub mod gcm;
 pub mod jis_x_0201;
+pub mod rarc;
 pub mod rel;
 pub mod shift_jis_1997;
 pub mod shift_jis_2004;
@@ -75,6 +76,8 @@ pub use gcm::Gcm;
 pub use helper::{Error, Result};
 #[doc(inline)]
 pub use jis_x_0201::{IteratorExt as JisX0201IteratorExt, JisX0201};
+#[doc(inline)]
+pub use rarc::Rarc;
 #[doc(inline)]
 pub use rel::Rel;
 #[doc(inline)]

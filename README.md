@@ -37,6 +37,7 @@ Picori (ピッコル) is a library for decompilation, modding, and rom-hacking w
 -   REL (Relocatable module)
 -   GCM (GameCube master disc)
 -   CISO (Compact ISO)
+-   RARC (Wii archive format)
 -   Yaz0 compression
 -   JIS X 0201 encoding
 -   Shift JIS encoding
@@ -62,6 +63,7 @@ The `examples` directory contains a few examples of how to use
 Picori.
 
 * [`dol_dump`](examples/dol_dump.rs) - Dump information about a `.dol` file.
+* [`rarc_dump`](examples/rarc_dump.rs) - Dump the content of a `.rarc` archive.
 * [`rel_dump`](examples/rel_dump.rs) - Dump information about a `.rel` file.
 * [`gcm_dump`](examples/gcm_dump.rs) - Dump information about a `.gcm`/`.iso` file.
 
