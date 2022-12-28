@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use colored::{ColoredString, Colorize};
 use picori::{gcm, Gcm};
 
 extern crate picori;
@@ -42,11 +41,11 @@ struct Args {
     width:     usize,
 }
 
-fn hex2(value: u8) -> ColoredString { format!("{:#04x}", value).cyan() }
+fn hex2(value: u8) -> String { format!("\x1b[36m{:#04x}\x1b[0m", value) }
 
-fn hex8(value: u32) -> ColoredString { format!("{:#010x}", value).cyan() }
+fn hex8(value: u32) -> String { format!("\x1b[36m{:#010x}\x1b[0m", value) }
 
-fn num(value: u32) -> ColoredString { format!("{}", value).cyan() }
+fn num(value: u32) -> String { format!("\x1b[36m{}\x1b[0m", value) }
 
 fn output_boot(boot: &gcm::Boot) {
     println!("boot.bin:");
@@ -137,16 +136,16 @@ fn output_fst(fst: &gcm::Fst) {
                 name, offset, size, ..
             } => {
                 println!(
-                    "{:indent$}{} offset: {} size: {}",
+                    "{:indent$}\x1b[32m{}\x1b[0m offset: {} size: {}",
                     "",
-                    name.green(),
+                    name,
                     hex8(offset),
                     hex8(size),
                     indent = indent * 2
                 );
             },
             gcm::fst::Entry::Directory { name, .. } => {
-                println!("{:indent$}{}", "", name.red(), indent = indent * 2);
+                println!("{:indent$}\x1b[31m{}\x1b[0m", "", name, indent = indent * 2);
             },
         }
     }

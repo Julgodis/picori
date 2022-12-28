@@ -2,7 +2,7 @@
 //! of the GCM image.
 
 use crate::error::ParseProblem;
-use crate::helper::{ensure, Parser, ProblemLocation};
+use crate::helper::{ensure, Parser, ProblemLocation, Writer};
 use crate::{Ascii, Result};
 
 /// [`Boot`] Console Type.
@@ -84,7 +84,7 @@ impl Boot {
         let streaming_buffer_size = input.u8()?;
         let _reserved0 = input.u8_array::<0x12>()?;
         let magic = input.bu32()?;
-        let game_name = input.str::<0x3E0, Ascii>()?;
+        let game_name = input.str_fixed::<0x3E0, Ascii>()?;
         let debug_monitor_offset = input.bu32()?;
         let debug_monitor_address = input.bu32()?;
         let _reserved1 = input.u8_array::<0x18>()?;
@@ -130,5 +130,36 @@ impl Boot {
             user_length,
             unknown0,
         })
+    }
+
+    pub fn to_binary<W: Writer>(&self, output: &mut W) -> Result<()> {
+        let console = match self.console {
+            ConsoleType::GameCube => 0x47_u8,
+        };
+
+        output.u8(console)?;
+        output.u8_array(&self.game_code)?;
+        output.u8(self.country_code)?;
+        output.u8_array(&self.maker_code)?;
+        output.u8(self.disc_id)?;
+        output.u8(self.version)?;
+        output.u8(self.audio_streaming)?;
+        output.u8(self.streaming_buffer_size)?;
+        output.u8_array(&[0; 0x12])?;
+        output.bu32(0xC2339F3D)?;
+        output.str::<0x3E0, Ascii>(&self.game_name)?;
+        output.bu32(self.debug_monitor_offset)?;
+        output.bu32(self.debug_monitor_address)?;
+        output.u8_array(&[0; 0x18])?;
+        output.bu32(self.main_executable_offset)?;
+        output.bu32(self.fst_offset)?;
+        output.bu32(self.fst_size)?;
+        output.bu32(self.fst_max_size)?;
+        output.bu32(self.user_position)?;
+        output.bu32(self.user_length)?;
+        output.bu32(self.unknown0)?;
+        output.u8_array(&[0; 0x4])?;
+
+        Ok(())
     }
 }

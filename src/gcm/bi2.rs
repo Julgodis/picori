@@ -10,7 +10,7 @@
 
 use std::collections::HashMap;
 
-use crate::helper::Parser;
+use crate::helper::{Parser, Writer};
 use crate::Result;
 
 /// [`Bi2`] Options.
@@ -122,5 +122,15 @@ impl Bi2 {
             .collect::<HashMap<_, _>>();
 
         Ok(Self { options })
+    }
+
+    pub fn to_binary<W: Writer>(&self, output: &mut W) -> Result<()> { 
+        let mut data = [0u32; 0x2000 / 4];
+        for (options, value) in self.options.iter() {
+            data[options.index()] = *value;
+        }
+        output.bu32_array(&data)?;
+
+        Ok(())
     }
 }

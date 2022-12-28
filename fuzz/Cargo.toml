@@ -43,6 +43,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "rarc"
+path = "fuzz_targets/rarc.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "gcm_boot"
 path = "fuzz_targets/gcm_boot.rs"
 test = false

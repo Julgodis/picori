@@ -49,6 +49,10 @@ pub enum Error {
     #[error("seek failed: {0} at {1}")]
     SeekFailed(#[source] std::io::Error, &'static Location<'static>),
 
+    /// Writing failed.
+    #[error("write failed: {0} bytes ({1}) at {2}")]
+    WriteFailed(usize, #[source] std::io::Error, &'static Location<'static>),
+
     /// Unknown IO error.
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),

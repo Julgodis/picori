@@ -103,5 +103,11 @@ mod boot {
             result.game_name,
             "THE LEGEND OF ZELDA The Wind Waker for USA"
         );
+
+        let mut output = [0u8; 1088];
+        let mut cursor = std::io::Cursor::new(&mut output[..]);
+        result.to_binary(&mut cursor).unwrap();
+
+        assert_eq!(output, data);
     }
 }

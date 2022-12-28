@@ -4,7 +4,7 @@ use std::panic::Location;
 use crate::{Error, Result};
 
 /// A helper trait for types that can read data into a buffer.
-pub trait Reader {
+pub trait Reader: Read {
     /// Read data into a mutable buffer.
     #[track_caller]
     #[inline]
@@ -13,11 +13,17 @@ pub trait Reader {
     }
 
     /// Read data into a mutable buffer. With caller location.
+    #[inline]
     fn read_into_tracked(
         &mut self,
         buffer: &mut [u8],
         caller: &'static std::panic::Location,
-    ) -> Result<()>;
+    ) -> Result<()> {
+        match self.read_exact(buffer) {
+            Ok(..) => Ok(()),
+            Err(io) => Err(Error::ReadFailed(buffer.len(), io, caller)),
+        }
+    }
 
     /// Read data into new buffer of u8.
     #[track_caller]
@@ -57,20 +63,11 @@ pub trait Reader {
     }
 }
 
-/// Implementation of [`Reader`] for all [`std::io::Read`].
-impl<Base> Reader for Base
+impl Reader for std::fs::File {}
+impl<T: Reader> Reader for std::io::BufReader<T> {}
+impl<T> Reader for std::io::Cursor<T>
 where
-    Base: Read + Sized,
+    Self: Read,
+    T: AsRef<[u8]>,
 {
-    #[inline]
-    fn read_into_tracked(
-        &mut self,
-        buffer: &mut [u8],
-        caller: &'static std::panic::Location,
-    ) -> Result<()> {
-        match self.read_exact(buffer) {
-            Ok(..) => Ok(()),
-            Err(io) => Err(Error::ReadFailed(buffer.len(), io, caller)),
-        }
-    }
 }

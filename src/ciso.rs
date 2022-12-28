@@ -83,9 +83,9 @@ impl Header {
 
         let mut blocks = Vec::with_capacity(last_block_index + 1);
         let mut block_offset = 0_u64;
-        for i in 0..=last_block_index {
-            blocks.push((block_offset, block_map[i] != 0));
-            block_offset += if block_map[i] != 0 {
+        for value in block_map.iter().take(last_block_index + 1) {
+            blocks.push((block_offset, *value != 0));
+            block_offset += if *value != 0 {
                 block_size as u64
             } else {
                 0

@@ -175,7 +175,7 @@ pub struct Dol {
 
 impl RomCopyInfo {
     /// Parse [`RomCopyInfo`] from binary stream.
-    fn from_binary<D: Parser + Seeker>(reader: &mut D) -> Result<Self> {
+    fn from_binary(reader: &mut impl Parser) -> Result<Self> {
         let rom_copy_info: Result<_> = {
             let rom_address = reader.bu32()?;
             let ram_address = reader.bu32()?;

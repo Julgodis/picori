@@ -15,7 +15,7 @@
 //! # use picori::Result;
 //! fn main() -> Result<()> {
 //!     let mut file = File::open("module.rel")?;
-//!     let _ = picori::Rel::from_binary(&mut file)?;
+//!     let _ = picori::Rel::from_binary(file)?;
 //!     Ok(())
 //! }
 //! ```

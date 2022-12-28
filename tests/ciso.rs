@@ -9,7 +9,7 @@ mod ciso {
         // example ciso
         let mut ciso = Vec::<u8>::new();
         ciso.extend_from_slice(&[0x43, 0x49, 0x53, 0x4F]);
-        ciso.extend_from_slice(&[0x00, 0x00, 0x00, 0x04]);
+        ciso.extend_from_slice(&[0x04, 0x00, 0x00, 0x00]);
         ciso.extend_from_slice(&[0_u8; 0x7FF8]);
 
         ciso[8 + 1] = 1;

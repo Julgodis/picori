@@ -2,7 +2,7 @@
 //! that contains the actual game code.
 
 use crate::error::ParseProblem;
-use crate::helper::{Parser, ProblemLocation, Seeker};
+use crate::helper::{Parser, ProblemLocation, Seeker, Writer};
 use crate::Result;
 
 /// [GCM][`crate::gcm`] executable file object.
@@ -42,6 +42,11 @@ impl Executable {
         input.goto(base)?;
         let data = input.read_as_vec(total_size as usize)?;
         Ok(Self { data })
+    }
+
+    pub fn to_binary<W: Writer>(&self, output: &mut W) -> Result<()> { 
+        output.u8_array(&self.data)?;
+        Ok(())
     }
 
     /// Get the executable data.

@@ -1,10 +1,7 @@
-use std::io::Cursor;
-use std::path::PathBuf;
-
 use clap::Parser;
-use colored::{ColoredString, Colorize};
 use picori::rel::ImportKind;
 use picori::Rel;
+use std::path::PathBuf;
 
 extern crate picori;
 
@@ -20,33 +17,41 @@ extern crate picori;
 struct Args {
     /// Path to the file to dump
     #[arg()]
-    path:        PathBuf,
+    path: PathBuf,
     /// Dump header
     #[arg(short = 't', long)]
-    header:      bool,
+    header: bool,
     /// Dump sections
     #[arg(short, long)]
-    sections:    bool,
+    sections: bool,
     /// Dump imports
     #[arg(short, long)]
-    imports:     bool,
+    imports: bool,
     /// Dump relocations
     #[arg(short, long)]
     relocations: bool,
     /// Dump section data
     #[arg(short, long)]
-    data:        bool,
+    data: bool,
     /// Dump all
     #[arg(short, long)]
-    all:         bool,
+    all: bool,
     /// Column width
     #[arg(short, long, default_value = "32")]
-    width:       usize,
+    width: usize,
 }
 
-fn hex4(value: u16) -> ColoredString { format!("{:#06x}", value).cyan() }
-fn hex8(value: u32) -> ColoredString { format!("{:#010x}", value).cyan() }
-fn num(value: u32) -> ColoredString { format!("{}", value).cyan() }
+fn hex4(value: u16) -> String {
+    format!("\x1b[36m{:#06x}\x1b[0m", value)
+}
+
+fn hex8(value: u32) -> String {
+    format!("\x1b[36m{:#010x}\x1b[0m", value)
+}
+
+fn num(value: u32) -> String {
+    format!("\x1b[36m{}\x1b[0m", value)
+}
 
 fn output_header(rel: &Rel) {
     println!("header:");
@@ -108,24 +113,24 @@ fn output_sections(rel: &Rel) {
             hex8(section.offset),
             hex8(section.size),
             if section.executable {
-                " [executable]".red()
+                "\x1b[31m [executable]\x1b[0m"
             } else {
-                ColoredString::default()
+                ""
             },
             if section.unknown {
-                " [unknown]".red()
+                "\x1b[31m [unknown]\x1b[0m"
             } else {
-                ColoredString::default()
+                ""
             },
             if i == 0 {
-                " [null section]".green()
+                "\x1b[32m [null section]\x1b[0m"
             } else {
-                ColoredString::default()
+                ""
             },
             if i != 0 && section.offset == 0 && section.size == 0 {
-                " [unused]".green()
+                "\x1b[32m [unused]\x1b[0m"
             } else {
-                ColoredString::default()
+                ""
             }
         );
     }
@@ -243,7 +248,7 @@ fn output(
     }
 }
 
-fn main() {
+fn main() -> picori::Result<()> {
     let args = Args::parse();
 
     let mut dump_header = args.header;
@@ -266,20 +271,13 @@ fn main() {
 
     if !dump_header && !dump_sections && !dump_imports && !dump_relocations && !dump_data {
         println!("nothing to dump :(");
-        return;
+        return Ok(());
     }
 
-    let file = std::fs::File::open(args.path).unwrap();
-    let mut file = std::io::BufReader::new(file);
-
-    let rel = if picori::yaz0::is_yaz0(&mut file) {
-        let mut reader = picori::Yaz0Reader::new(file).unwrap();
-        let decompressed = reader.decompress().unwrap();
-        let mut cursor = Cursor::new(decompressed);
-        Rel::from_binary(&mut cursor).unwrap()
-    } else {
-        Rel::from_binary(file).unwrap()
-    };
+    let file = std::fs::File::open(args.path)?;
+    let file = std::io::BufReader::new(file);
+    let file = picori::Yaz0Reader::new(file)?;
+    let rel = Rel::from_binary(file)?;
 
     output(
         &rel,
@@ -290,4 +288,6 @@ fn main() {
         dump_data,
         width,
     );
+
+    Ok(())
 }

@@ -50,14 +50,15 @@
 //! * [Shift JIS 1997][crate::shift_jis_1997] - Shift JIS 1997 encoding
 //! * [Shift JIS 2004][crate::shift_jis_2004] - Shift JIS 2004 encoding
 
-#![deny(missing_docs)]
-#![deny(unused_imports)]
+#![allow(missing_docs)]
+#![warn(unused_imports)]
 
 pub mod ascii;
 pub mod ciso;
 pub mod dol;
 pub mod gcm;
 pub mod jis_x_0201;
+pub mod rarc;
 pub mod rel;
 pub mod shift_jis_1997;
 pub mod shift_jis_2004;
@@ -75,6 +76,8 @@ pub use gcm::Gcm;
 pub use helper::{Error, Result};
 #[doc(inline)]
 pub use jis_x_0201::{IteratorExt as JisX0201IteratorExt, JisX0201};
+#[doc(inline)]
+pub use rarc::RarcReader;
 #[doc(inline)]
 pub use rel::Rel;
 #[doc(inline)]
@@ -94,3 +97,8 @@ pub mod error {
         ParseProblem,
     };
 }
+
+pub use helper::Seeker;
+pub use helper::Parser;
+pub use helper::Reader;
+pub use helper::Writer;

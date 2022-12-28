@@ -2,7 +2,7 @@
 //! apploader code, The apploader is a small program that loads the main
 //! executable and the [FST][`crate::gcm::fst`].
 
-use crate::helper::Parser;
+use crate::helper::{Parser, Writer};
 use crate::{Ascii, Result};
 
 /// [GCM][`crate::gcm`] Apploader (`apploader.img`) object.
@@ -30,7 +30,7 @@ pub struct Apploader {
 impl Apploader {
     /// Parse GCM Apploader.
     pub fn from_binary<D: Parser>(input: &mut D) -> Result<Self> {
-        let date = input.str::<0x10, Ascii>()?;
+        let date = input.str_fixed::<0x10, Ascii>()?;
         let entry_point = input.bu32()?;
         let size = input.bu32()?;
         let trailer_size = input.bu32()?;
@@ -47,4 +47,15 @@ impl Apploader {
             data,
         })
     }
+
+    pub fn to_binary<W: Writer>(&self, output: &mut W) -> Result<()> { 
+        output.str::<0x10, Ascii>(&self.date)?;
+        output.bu32(self.entry_point)?;
+        output.bu32(self.size)?;
+        output.bu32(self.trailer_size)?;
+        output.bu32(self.unknown)?;
+        output.u8_array(self.data.as_slice())?;
+        Ok(())
+    }
+
 }

@@ -13,11 +13,12 @@
 //! JIS][`crate::ShiftJis1997`] is based upon.
 
 use std::borrow::Borrow;
+use std::io::{BufReader, Read};
 use std::marker::PhantomData;
 use std::panic::Location;
 
 use crate::error::DecodingProblem::*;
-use crate::helper::{ParseStringEncoding, ProblemLocation};
+use crate::helper::{ParseStringEncoding, ProblemLocation, Parser};
 use crate::Result;
 
 /// [`JisX0201`] encoding.
@@ -144,6 +145,22 @@ impl ParseStringEncoding for JisX0201 {
         I: IntoIterator,
         I::Item: Borrow<u8> + Sized,
     {
+        Self::first(iter)
+    }
+
+    fn write_str(_data: &str, _buffer: &mut [u8]) -> Result<usize> {
+        todo!("JisX0201::write_str")
+    }
+
+    fn from_binary(reader: &mut impl Parser) -> Result<String> {
+        let buffer = BufReader::new(reader);
+        let iter = buffer
+            .bytes()
+            .take_while(|x| x.is_ok())
+            .filter_map(|x| match x {
+                Ok(x) => Some(x),
+                Err(_) => None,
+            });
         Self::first(iter)
     }
 }

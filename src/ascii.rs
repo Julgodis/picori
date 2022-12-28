@@ -6,11 +6,12 @@
 //! returned.
 
 use std::borrow::Borrow;
+use std::io::{BufReader, Read};
 use std::marker::PhantomData;
 use std::panic::Location;
 
-use crate::error::DecodingProblem::*;
-use crate::helper::{ParseStringEncoding, ProblemLocation};
+use crate::error::{DecodingProblem::*, EncodingProblem};
+use crate::helper::{ParseStringEncoding, Parser, ProblemLocation};
 use crate::Result;
 
 /// [ASCII][`Ascii`] encoding.
@@ -22,7 +23,7 @@ where
     I: IntoIterator,
     I::Item: Borrow<u8> + Sized,
 {
-    iter:    <I as IntoIterator>::IntoIter,
+    iter: <I as IntoIterator>::IntoIter,
     _marker: PhantomData<&'x ()>,
 }
 
@@ -33,7 +34,7 @@ where
 {
     fn new<'x>(iter: I) -> Decoder<'x, I> {
         Decoder {
-            iter:    iter.into_iter(),
+            iter: iter.into_iter(),
             _marker: PhantomData,
         }
     }
@@ -113,7 +114,9 @@ where
     Self::Item: Borrow<u8> + Sized,
 {
     /// Decode self iterator of bytes as [ASCII][`Ascii`].
-    fn ascii<'b>(self) -> Decoder<'b, Self> { Decoder::new(self) }
+    fn ascii<'b>(self) -> Decoder<'b, Self> {
+        Decoder::new(self)
+    }
 }
 
 impl<I> IteratorExt for I
@@ -129,6 +132,36 @@ impl ParseStringEncoding for Ascii {
         I: IntoIterator,
         I::Item: Borrow<u8> + Sized,
     {
+        Self::first(iter)
+    }
+
+    fn write_str(data: &str, buffer: &mut [u8]) -> Result<usize> {
+        let mut i = 0;
+        for c in data.chars().peekable() {
+            if i >= buffer.len() {
+                return Err(EncodingProblem::BufferTooSmall(Location::current()).into());
+            }
+            let u = c as u32;
+            if u > 0x7f {
+                return Err(
+                    EncodingProblem::UnableToEncodeCodePoint(c, Location::current()).into(),
+                );
+            }
+            buffer[i] = c as u8;
+            i += 1;
+        }
+        Ok(i)
+    }
+
+    fn from_binary(reader: &mut impl Parser) -> Result<String> {
+        let buffer = BufReader::new(reader);
+        let iter = buffer
+            .bytes()
+            .take_while(|x| x.is_ok())
+            .filter_map(|x| match x {
+                Ok(x) => Some(x),
+                Err(_) => None,
+            });
         Self::first(iter)
     }
 }
