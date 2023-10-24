@@ -26,7 +26,7 @@ Picori (ピッコル) is a library for decompilation, modding, and rom-hacking w
 
 ```diff
 !!! The project is currently very early stages of development. !!!
-!!! All features are not unimplemented and compatibility is not guaranteed. !!!
+!!! All features are not implemented and backwards compatibility is not guaranteed. !!!
 ```
 
 </div>
